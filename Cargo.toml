@@ -1,0 +1,6 @@
+[workspace]
+
+members = [
+    "lazuli_vm",
+    "lazuli",
+]
