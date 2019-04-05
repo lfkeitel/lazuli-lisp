@@ -1,5 +1,6 @@
 use std::rc::Rc;
 
+#[derive(Clone)]
 pub struct ConsList<T> {
     head: Link<T>,
 }
@@ -39,6 +40,10 @@ impl<T> ConsList<T> {
         Iter {
             next: self.head.as_ref().map(|node| &**node),
         }
+    }
+
+    pub fn empty(&self) -> bool {
+        self.head.is_none()
     }
 }
 

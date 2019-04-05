@@ -1,27 +1,33 @@
 mod env;
 
-use std::collections::HashMap;
-
 use crate::object::cons_list::ConsList;
-use crate::object::{self, Node, NodeRef, Program};
-
-type BuiltinFn = fn(&mut VM, ConsList<NodeRef>) -> Result<NodeRef, String>;
+use crate::object::{self, Node, Program};
 
 #[derive(Default)]
 pub struct VM {
     symbols: env::Env,
-    builtins: HashMap<String, BuiltinFn>,
+}
+
+macro_rules! make_builtin {
+    ($vm:ident, $sym:expr, $func:ident) => {{
+        let mut sym = object::Symbol::new($sym);
+        sym.function = Some(object::Callable::Builtin($func));
+        $vm.symbols.set_symbol(sym.into_ref());
+    }};
 }
 
 impl VM {
     pub fn new() -> Self {
         let mut vm = VM {
             symbols: env::Env::new(),
-            builtins: HashMap::new(),
         };
 
-        vm.builtins.insert("DEFVAR".to_owned(), builtin_defvar);
-        vm.builtins.insert("PRINT".to_owned(), builtin_print);
+        make_builtin!(vm, "defvar", builtin_defvar);
+        make_builtin!(vm, "print", builtin_print);
+        make_builtin!(vm, "+", builtin_add);
+        make_builtin!(vm, "-", builtin_sub);
+        make_builtin!(vm, "*", builtin_mul);
+        make_builtin!(vm, "/", builtin_div);
 
         vm
     }
@@ -34,54 +40,87 @@ impl VM {
         Ok(())
     }
 
-    fn eval(&mut self, form: &NodeRef) -> Result<NodeRef, String> {
-        match &*form.borrow() {
+    fn eval(&mut self, form: &Node) -> Result<Node, String> {
+        match form {
             Node::Symbol(sym_ref) => {
                 let sym = sym_ref.borrow();
                 let sym_name = sym.name();
-                match self.symbols.get_symbol(&sym_name) {
-                    Some(v) => Ok(object::symbolref_to_noderef(v)), // TODO: Return value of symbol has it
-                    None => Ok(Node::empty_list()),
-                }
+                Ok(self.symbols.get_symbol(&sym_name).borrow().value())
             }
-            Node::Number(num) => Ok(Node::Number(*num).into_ref()),
-            Node::String(string) => Ok(Node::String(string.to_owned()).into_ref()),
-            Node::List(list) => self.eval_list(list),
+            Node::Number(num) => Ok(Node::Number(*num)),
+            Node::String(string) => Ok(Node::String(string.to_owned())),
+            Node::List(list) => self.eval_list(&list),
             // Node::Function(Function),
             _ => Err("Not supported".to_owned()),
         }
     }
 
-    fn eval_list(&mut self, form: &ConsList<NodeRef>) -> Result<NodeRef, String> {
-        if let Some(h) = form.head() {
-            match &*h.borrow() {
-                Node::Symbol(sym_ref) => {
-                    let sym = sym_ref.borrow();
-                    if let Some(func) = self.builtins.get(sym.name()) {
-                        func(self, form.tail())
-                    } else {
-                        Err(format!("Undefined function {}", sym.name()))
+    fn eval_list(&mut self, form: &ConsList<Node>) -> Result<Node, String> {
+        let h = form.head();
+        if h.is_none() {
+            return Ok(Node::empty_list());
+        }
+
+        match &h.unwrap() {
+            Node::Symbol(sym_ref) => {
+                let sym_table_ref = self.symbols.get_symbol(sym_ref.borrow().name());
+                let sym = sym_table_ref.borrow();
+                if let Some(func) = &sym.function {
+                    match func {
+                        object::Callable::Builtin(func) => func(self, form.tail()),
+                        object::Callable::User(_) => {
+                            Err(format!("User functions not supported yet {}", sym.name()))
+                        }
                     }
+                } else {
+                    Err(format!("Undefined function {}", sym.name()))
                 }
-                _ => Err("Cannot evaluate non-symbol object".to_owned()),
             }
-        } else {
-            Ok(Node::empty_list())
+            _ => Err("Cannot evaluate non-symbol object".to_owned()),
         }
     }
 }
 
-fn builtin_defvar(vm: &mut VM, args_list: ConsList<NodeRef>) -> Result<NodeRef, String> {
+macro_rules! args_setup_error {
+    (==) => {
+        "{} expected {} args, got {}"
+    };
+
+    (>=) => {
+        "{} expected at least {} args, got {}"
+    };
+}
+
+macro_rules! args_setup {
+    ($args_list:ident, $sym:expr, $oper:tt, $check:expr) => {
+        {
+            let args: Vec<&Node> = $args_list.iter().collect();
+
+            if !(args.len() $oper $check) {
+                return Err(format!(
+                    args_setup_error!($oper),
+                    $sym,
+                    $check,
+                    args.len()
+                ))
+            }
+
+            args
+        }
+    };
+
+    ($args_list:ident, $name:expr, $check:expr) => {
+        args_setup!($args_list, $name, =, $check)
+    };
+}
+
+fn builtin_defvar(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
     // Collect into a vector to make it easier to work with args
-    let args: Vec<NodeRef> = args_list.iter().cloned().collect();
+    let args = args_setup!(args_list, "defavar", ==, 2);
 
-    if args.len() != 2 {
-        return Err(format!("defvar expected 2 args, got {}", args.len()));
-    }
+    let arg1 = args[0]; // Possibly a symbol reference
 
-    let arg1 = args[0].borrow(); // Possibly a symbol reference
-
-    let arg1_sym = match &*arg1 {
+    let arg1_sym = match &arg1 {
         Node::Symbol(sym) => sym,
         _ => return Err("defvar expected a symbol as arg 1".to_owned()),
     }; // Definitly a symbol reference
@@ -99,10 +138,46 @@ fn builtin_defvar(vm: &mut VM, args_list: ConsList<NodeRef>) -> Result<NodeRef, 
     Ok(args[0].clone()) // Return symbol
 }
 
-fn builtin_print(vm: &mut VM, args_list: ConsList<NodeRef>) -> Result<NodeRef, String> {
-    for arg in args_list.iter() {
-        print!("{} ", vm.eval(arg)?.borrow());
+fn builtin_print(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
+    if !args_list.empty() {
+        for arg in args_list.iter() {
+            print!("{} ", vm.eval(arg)?);
+        }
+        println!("");
     }
-    println!("");
     Ok(object::Node::empty_list()) // Return nil
 }
+
+macro_rules! arithmetic_fn {
+    ($fnname:ident, $oper:tt, $sym:expr) => {
+        fn $fnname(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
+            // Collect into a vector to make it easier to work with args
+            let args = args_setup!(args_list, $sym, >=, 2);
+
+            // Get starting value
+            let mut val = {
+                let evaled_arg = vm.eval(args[0])?;
+                match evaled_arg {
+                    Node::Number(n) => n,
+                    n => return Err(format!("{} expected number arguments, got {}", $sym, n.type_str())),
+                }
+            };
+
+            for arg in &args[1..] {
+                let evaled_arg = vm.eval(arg)?;
+
+                match evaled_arg {
+                    Node::Number(n) => val = val $oper n,
+                    n => return Err(format!("{} expected number arguments, got {}", $sym, n.type_str())),
+                }
+            }
+
+            Ok(object::Node::Number(val))
+        }
+    };
+}
+
+arithmetic_fn!(builtin_add, +, "+");
+arithmetic_fn!(builtin_sub, -, "-");
+arithmetic_fn!(builtin_mul, *, "*");
+arithmetic_fn!(builtin_div, /, "/");

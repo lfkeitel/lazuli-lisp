@@ -88,7 +88,7 @@ impl<'a> Parser<'a> {
             .into_iter()
             .rev()
             .fold(object::cons_list::ConsList::new(), |acc, elem| {
-                acc.append(elem.into_ref())
+                acc.append(elem)
             }))
     }
 
@@ -193,20 +193,20 @@ impl<'a> Parser<'a> {
                 .into_iter()
                 .rev()
                 .fold(object::cons_list::ConsList::new(), |acc, elem| {
-                    acc.append(elem.into_ref())
+                    acc.append(elem)
                 }),
         ))
     }
 }
 
-fn parse_u64(s: &str) -> Option<u64> {
+fn parse_u64(s: &str) -> Option<i64> {
     if s.starts_with("0x") {
-        match u64::from_str_radix(s.trim_start_matches("0x"), 16) {
+        match i64::from_str_radix(s.trim_start_matches("0x"), 16) {
             Ok(n) => Some(n),
             Err(_) => None,
         }
     } else {
-        match s.parse::<u64>() {
+        match s.parse::<i64>() {
             Ok(n) => Some(n),
             Err(_) => None,
         }

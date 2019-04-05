@@ -39,15 +39,15 @@ impl Env {
         self.syms.contains_key(name)
     }
 
-    pub(crate) fn get_symbol(&mut self, name: &str) -> Option<object::SymbolRef> {
+    pub(crate) fn get_symbol(&mut self, name: &str) -> object::SymbolRef {
         if let Some(sym) = self.syms.get(name) {
-            return Some(sym.clone());
+            return sym.clone();
         }
 
         if let Some(p) = &self.parent {
             p.borrow_mut().get_symbol(name)
         } else {
-            Some(object::Symbol::new(name).into_ref())
+            object::Symbol::new(name).into_ref()
         }
     }
 }
