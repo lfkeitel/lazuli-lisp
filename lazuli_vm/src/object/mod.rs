@@ -3,6 +3,7 @@ pub mod cons_list;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
+use std::str::FromStr;
 
 use crate::vm::VM;
 use cons_list::ConsList;
@@ -43,6 +44,14 @@ impl Node {
             Node::List(_) => "List",
             Node::Function(_) => "Function",
         }
+    }
+}
+
+impl FromStr for Node {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Node::String(s.to_owned()))
     }
 }
 
@@ -92,6 +101,15 @@ impl Symbol {
             name: str_to_symbol_name(&name),
             value: None,
             function: None,
+            properties: None,
+        }
+    }
+
+    pub fn new_with_builtin(name: &str, func: BuiltinFn) -> Self {
+        Symbol {
+            name: str_to_symbol_name(&name),
+            value: None,
+            function: Some(Callable::Builtin(func)),
             properties: None,
         }
     }

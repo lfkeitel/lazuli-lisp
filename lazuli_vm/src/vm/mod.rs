@@ -24,6 +24,7 @@ impl VM {
 
         make_builtin!(vm, "defvar", builtin_defvar);
         make_builtin!(vm, "print", builtin_print);
+        make_builtin!(vm, "quote", builtin_quote);
         make_builtin!(vm, "+", builtin_add);
         make_builtin!(vm, "-", builtin_sub);
         make_builtin!(vm, "*", builtin_mul);
@@ -32,15 +33,19 @@ impl VM {
         vm
     }
 
+    pub fn add_symbol(&mut self, sym: object::SymbolRef) {
+        self.symbols.set_symbol(sym);
+    }
+
     pub fn run(&mut self, program: &Program) -> Result<(), String> {
+        // println!("{:?}", self.symbols);
         for form in program.iter() {
             self.eval(&form).map(|_| ())?
         }
-        // println!("{:?}", self.symbols);
         Ok(())
     }
 
-    fn eval(&mut self, form: &Node) -> Result<Node, String> {
+    pub fn eval(&mut self, form: &Node) -> Result<Node, String> {
         match form {
             Node::Symbol(sym_ref) => {
                 let sym = sym_ref.borrow();
@@ -81,6 +86,7 @@ impl VM {
     }
 }
 
+#[macro_export]
 macro_rules! args_setup_error {
     (==) => {
         "{} expected {} args, got {}"
@@ -91,6 +97,7 @@ macro_rules! args_setup_error {
     };
 }
 
+#[macro_export]
 macro_rules! args_setup {
     ($args_list:ident, $sym:expr, $oper:tt, $check:expr) => {
         {
@@ -146,6 +153,12 @@ fn builtin_print(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String>
         println!("");
     }
     Ok(object::Node::empty_list()) // Return nil
+}
+
+fn builtin_quote(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
+    // Collect into a vector to make it easier to work with args
+    let args = args_setup!(args_list, "quote", ==, 1);
+    Ok(args[0].clone())
 }
 
 macro_rules! arithmetic_fn {
