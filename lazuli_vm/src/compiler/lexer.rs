@@ -148,7 +148,7 @@ impl<'a> Iterator for Lexer<'a> {
         let tok = match self.cur_ch {
             b'(' => some_token!(TokenType::LPAREN),
             b')' => some_token!(TokenType::RPAREN),
-            b',' => some_token!(TokenType::COMMA),
+            b'`' => some_token!(TokenType::QUASIQUOTE),
             b'\'' => some_token!(TokenType::QUOTE),
             b'"' => {
                 let col = self.col;
@@ -178,7 +178,7 @@ impl<'a> Iterator for Lexer<'a> {
 }
 
 fn is_whitespace(ch: u8) -> bool {
-    ch == b' ' || ch == b'\t' || ch == b'\n' || ch == b'\r'
+    ch == b' ' || ch == b'\t' || ch == b'\n' || ch == b'\r' || ch == b','
 }
 
 fn is_symbol(ch: u8) -> bool {

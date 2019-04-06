@@ -23,8 +23,16 @@ impl VM {
         };
 
         make_builtin!(vm, "defvar", builtin_defvar);
+        make_builtin!(vm, "setq", builtin_setq);
         make_builtin!(vm, "print", builtin_print);
         make_builtin!(vm, "quote", builtin_quote);
+        make_builtin!(vm, "quasiquote", builtin_quasiquote);
+        make_builtin!(vm, "progn", builtin_progn);
+        make_builtin!(
+            vm,
+            "debug-print-symbol-table",
+            builtin_debug_print_symbol_table
+        );
         make_builtin!(vm, "+", builtin_add);
         make_builtin!(vm, "-", builtin_sub);
         make_builtin!(vm, "*", builtin_mul);
@@ -145,6 +153,39 @@ fn builtin_defvar(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String
     Ok(args[0].clone()) // Return symbol
 }
 
+fn builtin_setq(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
+    let args = args_setup!(args_list, "defavar", >=, 2);
+
+    if args.len() % 2 != 0 {
+        return Err("setq expected pairs of arguments, received uneven arguments".to_owned());
+    }
+
+    for i in 0..(args.len() / 2) {
+        let arg1 = args[i * 2];
+
+        let arg1_sym = match &arg1 {
+            Node::Symbol(sym) => sym,
+            _ => {
+                return Err(format!(
+                    "setq expected a symbol as first in pair, got {}",
+                    arg1.type_str()
+                ));
+            }
+        };
+
+        let val = vm.eval(&args[(i * 2) + 1])?;
+
+        {
+            let mut arg1_sym_mut = arg1_sym.borrow_mut();
+            arg1_sym_mut.value = Some(val);
+        }
+
+        vm.symbols.set_symbol(arg1_sym.clone());
+    }
+
+    Ok(object::Node::empty_list())
+}
+
 fn builtin_print(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
     if !args_list.empty() {
         for arg in args_list.iter() {
@@ -152,13 +193,46 @@ fn builtin_print(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String>
         }
         println!("");
     }
-    Ok(object::Node::empty_list()) // Return nil
+    Ok(object::Node::empty_list())
 }
 
-fn builtin_quote(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
-    // Collect into a vector to make it easier to work with args
+fn builtin_quote(_vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
     let args = args_setup!(args_list, "quote", ==, 1);
     Ok(args[0].clone())
+}
+
+fn builtin_quasiquote(_vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
+    // TODO: Expand internal unquotes within a list
+    let args = args_setup!(args_list, "quote", ==, 1);
+    Ok(args[0].clone())
+}
+
+fn builtin_progn(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
+    let args = args_setup!(args_list, "progn", >=, 1);
+    let mut ret = object::Node::empty_list();
+
+    for form in args {
+        if let Node::List(_) = &form {
+            ret = vm.eval(&form)?;
+        } else {
+            return Err(format!(
+                "progn expected arguments to be lists, got {}",
+                form.type_str()
+            ));
+        }
+    }
+
+    Ok(ret)
+}
+
+fn builtin_debug_print_symbol_table(
+    vm: &mut VM,
+    args_list: ConsList<Node>,
+) -> Result<Node, String> {
+    // Collect into a vector to make it easier to work with args
+    args_setup!(args_list, "debug-print-symbol-table", ==, 0);
+    println!("{:?}", vm.symbols);
+    Ok(object::Node::empty_list())
 }
 
 macro_rules! arithmetic_fn {

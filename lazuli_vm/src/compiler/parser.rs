@@ -71,7 +71,7 @@ impl<'a> Parser<'a> {
                 TokenType::LPAREN => self.parse_list(),
 
                 _ => Err(ParserError::InvalidCode(format!(
-                    "{}: line {}, col {} Unknown token {}",
+                    "{}: line {}, col {} Expected (, got {}",
                     self.cur_tok.file, self.cur_tok.line, self.cur_tok.col, self.cur_tok.ttype
                 ))),
             };
@@ -149,43 +149,8 @@ impl<'a> Parser<'a> {
         self.read_token();
 
         while !self.cur_token_is(TokenType::RPAREN) {
-            match self.cur_tok.ttype {
-                TokenType::SYMBOL => {
-                    let s = object::Symbol::new(&self.cur_tok.literal);
-                    elems.push(object::Node::Symbol(s.into_ref()));
-                    self.read_token();
-                }
-
-                TokenType::NUMBER => {
-                    let n = parse_u64(&self.cur_tok.literal).ok_or_else(|| {
-                        ParserError::InvalidCode(format!(
-                            "{}: line {}, col {} Failed parsing number",
-                            self.cur_tok.file, self.cur_tok.line, self.cur_tok.col,
-                        ))
-                    })?;
-                    elems.push(object::Node::Number(n));
-                    self.read_token();
-                }
-
-                TokenType::STRING => {
-                    elems.push(object::Node::String(self.cur_tok.literal.clone()));
-                    self.read_token();
-                }
-
-                TokenType::LPAREN => {
-                    elems.push(self.parse_list()?);
-                    self.read_token();
-                }
-
-                _ => {
-                    return Err(self.tokens_err(&[
-                        TokenType::LPAREN,
-                        TokenType::NUMBER,
-                        TokenType::STRING,
-                        TokenType::SYMBOL,
-                    ]));
-                }
-            };
+            elems.push(self.parse_item()?);
+            self.read_token();
         }
 
         Ok(object::Node::List(
@@ -196,6 +161,66 @@ impl<'a> Parser<'a> {
                     acc.append(elem)
                 }),
         ))
+    }
+
+    fn parse_item(&mut self) -> Result<object::Node, ParserError> {
+        Ok(match self.cur_tok.ttype {
+            TokenType::SYMBOL => {
+                let s = object::Symbol::new(&self.cur_tok.literal);
+                object::Node::Symbol(s.into_ref())
+            }
+
+            TokenType::NUMBER => {
+                let n = parse_u64(&self.cur_tok.literal).ok_or_else(|| {
+                    ParserError::InvalidCode(format!(
+                        "{}: line {}, col {} Failed parsing number",
+                        self.cur_tok.file, self.cur_tok.line, self.cur_tok.col,
+                    ))
+                })?;
+                object::Node::Number(n)
+            }
+
+            TokenType::STRING => object::Node::String(self.cur_tok.literal.clone()),
+            TokenType::LPAREN => self.parse_list()?,
+
+            TokenType::QUOTE => {
+                self.read_token();
+                let elem = self.parse_item()?;
+                object::Node::List(
+                    object::cons_list::ConsList::new()
+                        .append(elem)
+                        .append(object::Symbol::new("quote").into_node()),
+                )
+            }
+
+            TokenType::QUASIQUOTE => {
+                self.read_token();
+                let elem = self.parse_item()?;
+                if let object::Node::List(_) = elem {
+                    object::Node::List(
+                        object::cons_list::ConsList::new()
+                            .append(elem)
+                            .append(object::Symbol::new("quasiquote").into_node()),
+                    )
+                } else {
+                    return Err(ParserError::InvalidCode(format!(
+                        "quasiquote can only be used on a list, got {}",
+                        elem.type_str()
+                    )));
+                }
+            }
+
+            _ => {
+                return Err(self.tokens_err(&[
+                    TokenType::LPAREN,
+                    TokenType::NUMBER,
+                    TokenType::STRING,
+                    TokenType::SYMBOL,
+                    TokenType::QUOTE,
+                    TokenType::QUASIQUOTE,
+                ]));
+            }
+        })
     }
 }
 
