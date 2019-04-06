@@ -28,7 +28,7 @@ pub enum Node {
     Number(i64),
     String(String),
     List(ConsList<Node>),
-    Function(Function),
+    Function(Callable),
 }
 
 impl Node {
@@ -152,12 +152,23 @@ impl ::std::fmt::Debug for Symbol {
 
 #[derive(Clone)]
 pub struct Function {
-    is_macro: bool,
-    params: Vec<String>,
-    body: ConsList<Node>,
+    pub params: Vec<String>,
+    pub body: Box<Node>,
 }
 
+#[derive(Clone)]
 pub enum Callable {
     Builtin(BuiltinFn),
-    User(Function),
+    Func(Function),
+    Macro(Function),
+}
+
+impl Callable {
+    pub fn into_macro(self) -> Self {
+        match self {
+            Callable::Macro(_) => self,
+            Callable::Func(f) => Callable::Macro(f),
+            Callable::Builtin(_) => panic!("Cannot make builtin func into a macro"),
+        }
+    }
 }

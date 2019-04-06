@@ -4,30 +4,39 @@ use std::rc::Rc;
 
 use crate::object;
 
-pub(crate) type EnvRef = Rc<RefCell<Env>>;
+pub type EnvRef = Rc<RefCell<Env>>;
 
 #[derive(Default)]
-pub(crate) struct Env {
+pub struct Env {
     syms: HashMap<String, object::SymbolRef>,
     parent: Option<EnvRef>,
 }
 
 impl Env {
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Env {
             syms: HashMap::new(),
             parent: None,
         }
     }
 
-    pub(crate) fn new_with_parent(parent: EnvRef) -> Self {
+    pub fn with_parent(parent: EnvRef) -> Self {
         Env {
             syms: HashMap::new(),
             parent: Some(parent),
         }
     }
 
-    pub(crate) fn set_symbol(&mut self, sym: object::SymbolRef) {
+    pub fn into_ref(self) -> EnvRef {
+        Rc::new(RefCell::new(self))
+    }
+
+    pub fn set_symbol(&mut self, sym: object::SymbolRef) {
+        if let Some(p) = &self.parent {
+            p.borrow_mut().set_symbol(sym);
+            return;
+        }
+
         let sym_name = {
             let sym_ref = sym.borrow();
             sym_ref.name().to_owned()
@@ -35,17 +44,17 @@ impl Env {
         self.syms.insert(sym_name, sym);
     }
 
-    pub(crate) fn contains(&mut self, name: &str) -> bool {
+    pub fn contains(&mut self, name: &str) -> bool {
         self.syms.contains_key(name)
     }
 
-    pub(crate) fn get_symbol(&mut self, name: &str) -> object::SymbolRef {
+    pub fn get_symbol(&self, name: &str) -> object::SymbolRef {
         if let Some(sym) = self.syms.get(name) {
             return sym.clone();
         }
 
         if let Some(p) = &self.parent {
-            p.borrow_mut().get_symbol(name)
+            p.borrow().get_symbol(name)
         } else {
             object::Symbol::new(name).into_ref()
         }
