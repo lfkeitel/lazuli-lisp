@@ -29,6 +29,12 @@ macro_rules! args_setup_error {
 
 #[macro_export]
 macro_rules! args_setup {
+    ($args_list:ident) => {
+        {
+            $args_list.iter().collect::<Vec<&Node>>()
+        }
+    };
+
     ($args_list:ident, $sym:expr, $oper:tt, $check:expr) => {
         {
             let args: Vec<&Node> = $args_list.iter().collect();
@@ -47,13 +53,13 @@ macro_rules! args_setup {
     };
 
     ($args_list:ident, $name:expr, $check:expr) => {
-        args_setup!($args_list, $name, =, $check)
+        args_setup!($args_list, $name, ==, $check)
     };
 }
 
 impl VM {
     pub fn new() -> Self {
-        let mut vm = VM {
+        let vm = VM {
             symbols: env::Env::new().into_ref(),
         };
 
@@ -115,7 +121,7 @@ impl VM {
         match func {
             Callable::Builtin(f) => f(self, args),
             Callable::Func(f) => {
-                let args = args_setup!(args, "<func>", ==, f.params.len());
+                let args = args_setup!(args, "<func>", f.params.len());
                 let mut new_env = env::Env::with_parent(self.symbols.clone());
 
                 for (i, arg) in args.iter().enumerate() {
@@ -127,7 +133,7 @@ impl VM {
                 VM::with_env(new_env.into_ref()).eval(&f.body)
             }
             Callable::Macro(f) => {
-                let args = args_setup!(args, "<func>", ==, f.params.len());
+                let args = args_setup!(args, "<func>", f.params.len());
                 let mut new_env = env::Env::with_parent(self.symbols.clone());
 
                 for (i, arg) in args.iter().enumerate() {
@@ -182,7 +188,7 @@ impl VM {
 
 fn builtin_defvar(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
     // Collect into a vector to make it easier to work with args
-    let args = args_setup!(args_list, "defavar", ==, 2);
+    let args = args_setup!(args_list, "defavar", 2);
 
     let arg1 = args[0]; // Possibly a symbol reference
 
@@ -238,7 +244,7 @@ fn builtin_setq(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> 
 }
 
 fn builtin_setf(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
-    let args = args_setup!(args_list, "setf", ==, 2);
+    let args = args_setup!(args_list, "setf", 2);
 
     let arg1 = vm.eval(&args[0])?;
 
@@ -262,7 +268,7 @@ fn builtin_setf(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> 
 }
 
 fn builtin_defmacro(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
-    let args = args_setup!(args_list, "defmacro", ==, 3);
+    let args = args_setup!(args_list, "defmacro", 3);
 
     let macro_name = args[0]; // Possibly a symbol reference
 
@@ -307,7 +313,7 @@ fn builtin_defmacro(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, Stri
 }
 
 fn builtin_lambda(_vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
-    let args = args_setup!(args_list, "lambda", ==, 2);
+    let args = args_setup!(args_list, "lambda", 2);
 
     let params = match &args[0] {
         Node::List(l) => l,
@@ -349,7 +355,7 @@ fn builtin_print(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String>
 }
 
 fn builtin_list(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
-    let args = args_setup!(args_list, "quote", >=, 0);
+    let args = args_setup!(args_list);
     let mut new_list = ConsList::new();
     for item in args.iter().rev() {
         new_list = new_list.append(vm.eval(item)?);
@@ -358,18 +364,18 @@ fn builtin_list(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> 
 }
 
 fn builtin_quote(_vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
-    let args = args_setup!(args_list, "quote", ==, 1);
+    let args = args_setup!(args_list, "quote", 1);
     Ok(args[0].clone())
 }
 
 fn builtin_quasiquote(_vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
     // TODO: Expand internal unquotes within a list
-    let args = args_setup!(args_list, "quote", ==, 1);
+    let args = args_setup!(args_list, "quasiquote", 1);
     Ok(args[0].clone())
 }
 
 fn builtin_eval(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
-    let args = args_setup!(args_list, "eval", ==, 1);
+    let args = args_setup!(args_list, "eval", 1);
     vm.eval(args[0])
 }
 
