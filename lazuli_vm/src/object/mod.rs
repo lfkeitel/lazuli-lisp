@@ -22,9 +22,15 @@ impl ::std::fmt::Debug for Program {
 
 // pub type NodeRef = Rc<RefCell<Node>>;
 
+thread_local! {
+    pub static TRUE_KW: Node = Node::new_keyword("t");
+    pub static FALSE_KW: Node = Node::new_keyword("f"); // Or rather, falsey
+}
+
 #[derive(Clone)]
 pub enum Node {
     Symbol(SymbolRef),
+    Keyword(String),
     Number(i64),
     String(String),
     List(ConsList<Node>),
@@ -39,11 +45,51 @@ impl Node {
     pub fn type_str(&self) -> &str {
         match self {
             Node::Symbol(_) => "Symbol",
+            Node::Keyword(_) => "Keyword",
             Node::Number(_) => "Number",
             Node::String(_) => "String",
             Node::List(_) => "List",
             Node::Function(_) => "Function",
         }
+    }
+
+    pub fn new_keyword(name: &str) -> Self {
+        Node::Keyword(str_to_symbol_name(name))
+    }
+
+    pub fn bool_obj(b: bool) -> Node {
+        if b {
+            TRUE_KW.with(|t| t.clone())
+        } else {
+            FALSE_KW.with(|f| f.clone())
+        }
+    }
+
+    pub fn is_truthy(&self) -> bool {
+        TRUE_KW.with(|t| self == t)
+    }
+}
+
+impl PartialEq for Node {
+    // Can't derive this since Symbol contains a SymbolRef and you can't
+    // implement external traits on an external type (Rc<T>)
+
+    fn eq(&self, other: &Node) -> bool {
+        match (self, other) {
+            (Node::Symbol(v1), Node::Symbol(v2)) => v1.borrow().name == v2.borrow().name,
+            (Node::Keyword(v1), Node::Keyword(v2)) => v1 == v2,
+            (Node::Number(v1), Node::Number(v2)) => v1 == v2,
+            (Node::String(v1), Node::String(v2)) => v1 == v2,
+            (Node::Function(v1), Node::Function(v2)) => v1 == v2,
+            (Node::List(v1), Node::List(v2)) => v1 == v2,
+            _ => false,
+        }
+    }
+}
+
+impl Default for Node {
+    fn default() -> Self {
+        FALSE_KW.with(|f| f.clone())
     }
 }
 
@@ -59,6 +105,7 @@ impl ::std::fmt::Display for Node {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         match self {
             Node::Symbol(v) => write!(f, "{}", v.borrow()),
+            Node::Keyword(v) => write!(f, "{}", v),
             Node::Number(v) => write!(f, "{}", v),
             Node::String(v) => write!(f, "\"{}\"", v),
             Node::List(v) => {
@@ -150,7 +197,7 @@ impl ::std::fmt::Debug for Symbol {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct Function {
     pub params: Vec<String>,
     pub body: Box<Node>,
@@ -169,6 +216,19 @@ impl Callable {
             Callable::Macro(_) => self,
             Callable::Func(f) => Callable::Macro(f),
             Callable::Builtin(_) => panic!("Cannot make builtin func into a macro"),
+        }
+    }
+}
+
+impl PartialEq for Callable {
+    fn eq(&self, other: &Callable) -> bool {
+        match (self, other) {
+            (Callable::Builtin(v1), Callable::Builtin(v2)) => {
+                v1 as *const BuiltinFn as usize == v2 as *const BuiltinFn as usize
+            }
+            (Callable::Macro(v1), Callable::Macro(v2)) => v1 == v2,
+            (Callable::Func(v1), Callable::Func(v2)) => v1 == v2,
+            _ => false,
         }
     }
 }

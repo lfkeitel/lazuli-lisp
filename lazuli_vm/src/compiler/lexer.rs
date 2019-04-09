@@ -158,6 +158,11 @@ impl<'a> Iterator for Lexer<'a> {
                 let col = self.col;
                 return some_token!(TokenType::COMMENT, self.read_single_line_comment(), col);
             }
+            b':' => {
+                let col = self.col;
+                self.read_char();
+                return some_token!(TokenType::KEYWORD, self.read_symbol(), col);
+            }
             0 => None,
             _ => {
                 if is_digit(self.cur_ch) {

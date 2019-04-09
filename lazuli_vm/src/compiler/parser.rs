@@ -170,6 +170,8 @@ impl<'a> Parser<'a> {
                 object::Node::Symbol(s.into_ref())
             }
 
+            TokenType::KEYWORD => object::Node::new_keyword(&self.cur_tok.literal),
+
             TokenType::NUMBER => {
                 let n = parse_u64(&self.cur_tok.literal).ok_or_else(|| {
                     ParserError::InvalidCode(format!(
@@ -216,6 +218,7 @@ impl<'a> Parser<'a> {
                     TokenType::NUMBER,
                     TokenType::STRING,
                     TokenType::SYMBOL,
+                    TokenType::KEYWORD,
                     TokenType::QUOTE,
                     TokenType::QUASIQUOTE,
                 ]));

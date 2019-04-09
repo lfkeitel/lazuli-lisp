@@ -83,6 +83,10 @@ impl VM {
         make_builtin!(vm, "-", builtin_sub);
         make_builtin!(vm, "*", builtin_mul);
         make_builtin!(vm, "/", builtin_div);
+        make_builtin!(vm, "eq", builtin_eq);
+        make_builtin!(vm, "not", builtin_not);
+        make_builtin!(vm, "and", builtin_and);
+        make_builtin!(vm, "or", builtin_or);
 
         vm
     }
@@ -113,6 +117,7 @@ impl VM {
             Node::Number(num) => Ok(Node::Number(*num)),
             Node::String(string) => Ok(Node::String(string.to_owned())),
             Node::List(list) => self.eval_list(&list),
+            Node::Keyword(v) => Ok(Node::Keyword(v.clone())),
             _ => Err("Not supported".to_owned()),
         }
     }
@@ -151,7 +156,7 @@ impl VM {
     fn eval_list(&mut self, form: &ConsList<Node>) -> Result<Node, String> {
         let h = form.head();
         if h.is_none() {
-            return Ok(Node::empty_list());
+            return Ok(Node::bool_obj(false));
         }
 
         let head = h.unwrap();
@@ -240,7 +245,7 @@ fn builtin_setq(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> 
         vm.symbols.borrow_mut().set_symbol(arg1_sym.clone());
     }
 
-    Ok(object::Node::empty_list())
+    Ok(Node::bool_obj(false))
 }
 
 fn builtin_setf(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
@@ -264,7 +269,7 @@ fn builtin_setf(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> 
     }
 
     vm.symbols.borrow_mut().set_symbol(arg1_sym.clone());
-    Ok(object::Node::empty_list())
+    Ok(Node::bool_obj(false))
 }
 
 fn builtin_defmacro(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
@@ -351,7 +356,7 @@ fn builtin_print(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String>
         }
         println!("");
     }
-    Ok(object::Node::empty_list())
+    Ok(Node::bool_obj(false))
 }
 
 fn builtin_list(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
@@ -381,7 +386,7 @@ fn builtin_eval(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> 
 
 fn builtin_progn(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
     let args = args_setup!(args_list, "progn", >=, 1);
-    let mut ret = object::Node::empty_list();
+    let mut ret = Node::bool_obj(false);
 
     for form in args {
         if let Node::List(_) = &form {
@@ -404,7 +409,7 @@ fn builtin_debug_print_symbol_table(
     // Collect into a vector to make it easier to work with args
     args_setup!(args_list, "debug-print-symbol-table", ==, 0);
     println!("{:?}", vm.symbols);
-    Ok(object::Node::empty_list())
+    Ok(Node::bool_obj(false))
 }
 
 macro_rules! arithmetic_fn {
@@ -440,3 +445,36 @@ arithmetic_fn!(builtin_add, +, "+");
 arithmetic_fn!(builtin_sub, -, "-");
 arithmetic_fn!(builtin_mul, *, "*");
 arithmetic_fn!(builtin_div, /, "/");
+
+fn builtin_eq(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
+    let args = args_setup!(args_list, "eq", >=, 2);
+    let evaled_arg1 = vm.eval(args[0]).unwrap_or_default();
+
+    let res = args
+        .iter()
+        .skip(1)
+        .all(|x| vm.eval(&x).unwrap_or_default() == evaled_arg1);
+
+    Ok(Node::bool_obj(res))
+}
+
+fn builtin_not(_: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
+    let args = args_setup!(args_list, "not", ==, 1);
+    Ok(Node::bool_obj(!args[0].is_truthy()))
+}
+
+fn builtin_and(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
+    let args = args_setup!(args_list, "and", >=, 2);
+    let res = args
+        .iter()
+        .all(|x| vm.eval(&x).unwrap_or_default().is_truthy());
+    Ok(Node::bool_obj(res))
+}
+
+fn builtin_or(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
+    let args = args_setup!(args_list, "or", >=, 2);
+    let res = args
+        .iter()
+        .any(|x| vm.eval(&x).unwrap_or_default().is_truthy());
+    Ok(Node::bool_obj(res))
+}

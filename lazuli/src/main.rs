@@ -24,7 +24,7 @@ fn compile_file(path: &str) {
         eprintln!("{}", e);
         std::process::exit(1);
     });
-    println!("{:?}", code);
+    // println!("{:?}", code);
 
     let mut vm = vm::VM::new();
     if let Err(e) = vm.run(&code) {

@@ -1,24 +1,29 @@
 use std::rc::Rc;
 
-#[derive(Clone)]
-pub struct ConsList<T> {
+#[derive(Clone, Default)]
+pub struct ConsList<T: PartialEq> {
     head: Link<T>,
+    length: usize,
 }
 
-type Link<T> = Option<Rc<Node<T>>>;
+type Link<T: PartialEq> = Option<Rc<Node<T>>>;
 
-struct Node<T> {
+struct Node<T: PartialEq> {
     elem: T,
     next: Link<T>,
 }
 
-impl<T> ConsList<T> {
+impl<T: PartialEq> ConsList<T> {
     pub fn new() -> Self {
-        ConsList { head: None }
+        ConsList {
+            head: None,
+            length: 0,
+        }
     }
 
     pub fn append(&self, elem: T) -> ConsList<T> {
         ConsList {
+            length: self.length + 1,
             head: Some(Rc::new(Node {
                 elem: elem,
                 next: self.head.clone(),
@@ -29,6 +34,11 @@ impl<T> ConsList<T> {
     pub fn tail(&self) -> ConsList<T> {
         ConsList {
             head: self.head.as_ref().and_then(|node| node.next.clone()),
+            length: if self.length > 0 {
+                self.length() - 1
+            } else {
+                0
+            },
         }
     }
 
@@ -45,9 +55,13 @@ impl<T> ConsList<T> {
     pub fn empty(&self) -> bool {
         self.head.is_none()
     }
+
+    pub fn length(&self) -> usize {
+        self.length
+    }
 }
 
-impl<T> Drop for ConsList<T> {
+impl<T: PartialEq> Drop for ConsList<T> {
     fn drop(&mut self) {
         let mut head = self.head.take();
         while let Some(node) = head {
@@ -60,11 +74,27 @@ impl<T> Drop for ConsList<T> {
     }
 }
 
-pub struct Iter<'a, T> {
+impl<T: PartialEq> PartialEq for ConsList<T> {
+    fn eq(&self, other: &ConsList<T>) -> bool {
+        if self.length != other.length {
+            return false;
+        }
+
+        for (i1, i2) in self.iter().zip(other.iter()) {
+            if i1 != i2 {
+                return false;
+            }
+        }
+
+        true
+    }
+}
+
+pub struct Iter<'a, T: PartialEq> {
     next: Option<&'a Node<T>>,
 }
 
-impl<'a, T> Iterator for Iter<'a, T> {
+impl<'a, T: PartialEq> Iterator for Iter<'a, T> {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -109,5 +139,23 @@ mod test {
         assert_eq!(iter.next(), Some(&3));
         assert_eq!(iter.next(), Some(&2));
         assert_eq!(iter.next(), Some(&1));
+    }
+
+    #[test]
+    fn test_equality() {
+        let list1 = ConsList::new().append(1).append(2).append(3);
+        let list2 = ConsList::new().append(1).append(2).append(3);
+        let list3 = ConsList::new().append(2).append(1).append(3);
+
+        assert!(list1 == list2);
+        assert!(list1 != list3);
+    }
+
+    #[test]
+    fn test_equality_empty() {
+        let list1: ConsList<i32> = ConsList::new();
+        let list2: ConsList<i32> = ConsList::new();
+
+        assert!(list1 == list2);
     }
 }
