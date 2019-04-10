@@ -1,6 +1,6 @@
 ; Variable definitions
-(defvar a 5)
-(defvar b 6)
+(define a 5)
+(define b 6)
 
 ; Arithmetic, equality
 (print (+ a b))
@@ -21,8 +21,8 @@
 (print (or :t '()))
 (print (or '() :t))
 
-(defvar str1 "Hello")
-(defvar str2 "hello")
+(define str1 "Hello")
+(define str2 "hello")
 
 ; If expression with true and false branches
 (if (eq str1 str1)

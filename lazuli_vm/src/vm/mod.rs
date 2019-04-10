@@ -81,8 +81,8 @@ impl VM {
             symbols: env::Env::new().into_ref(),
         };
 
-        make_builtin!(vm, "defvar", builtin_defvar);
-        make_builtin!(vm, "defmacro", builtin_defmacro);
+        make_builtin!(vm, "define", builtin_defvar);
+        make_builtin!(vm, "define-syntax", builtin_defmacro);
         make_builtin!(vm, "setq", builtin_setq);
         make_builtin!(vm, "setf", builtin_setf);
         make_builtin!(vm, "print", builtin_print);
