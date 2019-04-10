@@ -45,10 +45,10 @@ impl<'a> Parser<'a> {
     {
         let cur = lexer
             .next()
-            .unwrap_or_else(|| token::Token::simple(TokenType::EOF, 0, 0, ""));
+            .unwrap_or_else(|| token::Token::simple(TokenType::Eof, 0, 0, ""));
         let peek = lexer
             .next()
-            .unwrap_or_else(|| token::Token::simple(TokenType::EOF, 0, 0, ""));
+            .unwrap_or_else(|| token::Token::simple(TokenType::Eof, 0, 0, ""));
 
         Parser {
             lexer: Box::new(lexer),
@@ -60,15 +60,15 @@ impl<'a> Parser<'a> {
     pub fn parse(mut self) -> Result<object::Program, ParserError> {
         let mut forms = Vec::new();
 
-        while self.cur_tok.ttype != TokenType::EOF {
+        while self.cur_tok.ttype != TokenType::Eof {
             let res: Result<object::Node, ParserError> = match self.cur_tok.ttype {
                 // Skip empty lines
-                TokenType::COMMENT => {
+                TokenType::Comment => {
                     self.read_token();
                     continue;
                 }
 
-                TokenType::LPAREN => self.parse_list(),
+                TokenType::LParen => self.parse_list(),
 
                 _ => Err(ParserError::InvalidCode(format!(
                     "{}: line {}, col {} Expected (, got {}",
@@ -97,13 +97,13 @@ impl<'a> Parser<'a> {
         self.peek_tok = self
             .lexer
             .next()
-            .unwrap_or_else(|| token::Token::simple(TokenType::EOF, 0, 0, ""));
+            .unwrap_or_else(|| token::Token::simple(TokenType::Eof, 0, 0, ""));
 
-        while self.peek_tok.ttype == TokenType::COMMENT {
+        while self.peek_tok.ttype == TokenType::Comment {
             self.peek_tok = self
                 .lexer
                 .next()
-                .unwrap_or_else(|| token::Token::simple(TokenType::EOF, 0, 0, ""));
+                .unwrap_or_else(|| token::Token::simple(TokenType::Eof, 0, 0, ""));
         }
 
         // dbg!(&self.cur_tok);
@@ -148,7 +148,7 @@ impl<'a> Parser<'a> {
         let mut elems = Vec::new();
         self.read_token();
 
-        while !self.cur_token_is(TokenType::RPAREN) {
+        while !self.cur_token_is(TokenType::RParen) {
             elems.push(self.parse_item()?);
             self.read_token();
         }
@@ -165,14 +165,14 @@ impl<'a> Parser<'a> {
 
     fn parse_item(&mut self) -> Result<object::Node, ParserError> {
         Ok(match self.cur_tok.ttype {
-            TokenType::SYMBOL => {
+            TokenType::Symbol => {
                 let s = object::Symbol::new(&self.cur_tok.literal);
                 object::Node::Symbol(s.into_ref())
             }
 
-            TokenType::KEYWORD => object::Node::new_keyword(&self.cur_tok.literal),
+            TokenType::Keyword => object::Node::new_keyword(&self.cur_tok.literal),
 
-            TokenType::NUMBER => {
+            TokenType::Number => {
                 let n = parse_u64(&self.cur_tok.literal).ok_or_else(|| {
                     ParserError::InvalidCode(format!(
                         "{}: line {}, col {} Failed parsing number",
@@ -182,10 +182,10 @@ impl<'a> Parser<'a> {
                 object::Node::Number(n)
             }
 
-            TokenType::STRING => object::Node::String(self.cur_tok.literal.clone()),
-            TokenType::LPAREN => self.parse_list()?,
+            TokenType::String => object::Node::String(self.cur_tok.literal.clone()),
+            TokenType::LParen => self.parse_list()?,
 
-            TokenType::QUOTE => {
+            TokenType::Quote => {
                 self.read_token();
                 let elem = self.parse_item()?;
                 object::Node::List(
@@ -195,7 +195,7 @@ impl<'a> Parser<'a> {
                 )
             }
 
-            TokenType::QUASIQUOTE => {
+            TokenType::Quasiquote => {
                 self.read_token();
                 let elem = self.parse_item()?;
                 if let object::Node::List(_) = elem {
@@ -212,15 +212,32 @@ impl<'a> Parser<'a> {
                 }
             }
 
+            TokenType::Tilde => {
+                self.read_token();
+                let unquote_func = if self.cur_token_is(TokenType::At) {
+                    self.read_token();
+                    "unquote-splice"
+                } else {
+                    "unquote"
+                };
+
+                let elem = self.parse_item()?;
+                object::Node::List(
+                    object::cons_list::ConsList::new()
+                        .append(elem)
+                        .append(object::Symbol::new(unquote_func).into_node()),
+                )
+            }
+
             _ => {
                 return Err(self.tokens_err(&[
-                    TokenType::LPAREN,
-                    TokenType::NUMBER,
-                    TokenType::STRING,
-                    TokenType::SYMBOL,
-                    TokenType::KEYWORD,
-                    TokenType::QUOTE,
-                    TokenType::QUASIQUOTE,
+                    TokenType::LParen,
+                    TokenType::Number,
+                    TokenType::String,
+                    TokenType::Symbol,
+                    TokenType::Keyword,
+                    TokenType::Quote,
+                    TokenType::Quasiquote,
                 ]));
             }
         })

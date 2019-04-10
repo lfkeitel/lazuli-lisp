@@ -146,33 +146,35 @@ impl<'a> Iterator for Lexer<'a> {
         self.devour_whitespace();
 
         let tok = match self.cur_ch {
-            b'(' => some_token!(TokenType::LPAREN),
-            b')' => some_token!(TokenType::RPAREN),
-            b'`' => some_token!(TokenType::QUASIQUOTE),
-            b'\'' => some_token!(TokenType::QUOTE),
+            b'(' => some_token!(TokenType::LParen),
+            b')' => some_token!(TokenType::RParen),
+            b'`' => some_token!(TokenType::Quasiquote),
+            b'\'' => some_token!(TokenType::Quote),
+            b'~' => some_token!(TokenType::Tilde),
+            b'@' => some_token!(TokenType::At),
             b'"' => {
                 let col = self.col;
-                return some_token!(TokenType::STRING, self.read_string(), col);
+                return some_token!(TokenType::String, self.read_string(), col);
             }
             b';' => {
                 let col = self.col;
-                return some_token!(TokenType::COMMENT, self.read_single_line_comment(), col);
+                return some_token!(TokenType::Comment, self.read_single_line_comment(), col);
             }
             b':' => {
                 let col = self.col;
                 self.read_char();
-                return some_token!(TokenType::KEYWORD, self.read_symbol(), col);
+                return some_token!(TokenType::Keyword, self.read_symbol(), col);
             }
             0 => None,
             _ => {
                 if is_digit(self.cur_ch) {
-                    return some_token!(TokenType::NUMBER, self.read_number());
+                    return some_token!(TokenType::Number, self.read_number());
                 } else if is_symbol(self.cur_ch) {
                     let col = self.col;
                     let lit = self.read_symbol();
-                    return some_token!(TokenType::SYMBOL, lit, col);
+                    return some_token!(TokenType::Symbol, lit, col);
                 } else {
-                    some_token!(TokenType::ILLEGAL)
+                    some_token!(TokenType::Illegal)
                 }
             }
         };

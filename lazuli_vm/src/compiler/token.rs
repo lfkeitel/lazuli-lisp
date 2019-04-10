@@ -1,17 +1,18 @@
-#[allow(non_camel_case_types)]
 #[derive(Copy, Clone, PartialEq)]
 pub enum TokenType {
-    ILLEGAL,
-    EOF,
-    COMMENT,
-    QUASIQUOTE,
-    SYMBOL,
-    KEYWORD,
-    NUMBER,
-    STRING,
-    RPAREN,
-    LPAREN,
-    QUOTE,
+    Illegal,
+    Eof,
+    Comment,
+    Quasiquote,
+    Symbol,
+    Keyword,
+    Number,
+    String,
+    RParen,
+    LParen,
+    Quote,
+    Tilde,
+    At,
 }
 
 impl ::std::fmt::Display for TokenType {
@@ -20,17 +21,19 @@ impl ::std::fmt::Display for TokenType {
             f,
             "{}",
             match self {
-                TokenType::ILLEGAL => "ILLEGAL",
-                TokenType::EOF => "EOF",
-                TokenType::COMMENT => "COMMENT",
-                TokenType::QUASIQUOTE => "QUASIQUOTE",
-                TokenType::SYMBOL => "SYMBOL",
-                TokenType::KEYWORD => "KEYWORD",
-                TokenType::NUMBER => "NUMBER",
-                TokenType::STRING => "STRING",
-                TokenType::RPAREN => "RPAREN",
-                TokenType::LPAREN => "LPAREN",
-                TokenType::QUOTE => "QUOTE",
+                TokenType::Illegal => "Illegal",
+                TokenType::Eof => "Eof",
+                TokenType::Comment => "Comment",
+                TokenType::Quasiquote => "Quasiquote",
+                TokenType::Symbol => "Symbol",
+                TokenType::Keyword => "Keyword",
+                TokenType::Number => "Number",
+                TokenType::String => "String",
+                TokenType::RParen => "RParen",
+                TokenType::LParen => "LParen",
+                TokenType::Quote => "Quote",
+                TokenType::Tilde => "Tilde",
+                TokenType::At => "At",
             }
         )
     }
