@@ -35,6 +35,24 @@ macro_rules! args_setup {
         }
     };
 
+    ($args_list:ident, $sym:expr, $checkl:expr, $checkh:expr) => {
+        {
+            let args: Vec<&Node> = $args_list.iter().collect();
+
+            if !(args.len() >= $checkl && args.len() <= $checkh) {
+                return Err(format!(
+                    "{} expected at between {} and {} args, got {}",
+                    $sym,
+                    $checkl,
+                    $checkh,
+                    args.len()
+                ))
+            }
+
+            args
+        }
+    };
+
     ($args_list:ident, $sym:expr, $oper:tt, $check:expr) => {
         {
             let args: Vec<&Node> = $args_list.iter().collect();
@@ -87,6 +105,7 @@ impl VM {
         make_builtin!(vm, "not", builtin_not);
         make_builtin!(vm, "and", builtin_and);
         make_builtin!(vm, "or", builtin_or);
+        make_builtin!(vm, "if", builtin_if);
 
         vm
     }
@@ -350,12 +369,10 @@ fn builtin_lambda(_vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, Strin
 }
 
 fn builtin_print(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
-    if !args_list.empty() {
-        for arg in args_list.iter() {
-            print!("{} ", vm.eval(arg)?);
-        }
-        println!("");
+    for arg in args_list.iter() {
+        print!("{} ", vm.eval(arg)?);
     }
+    println!("");
     Ok(Node::bool_obj(false))
 }
 
@@ -477,4 +494,17 @@ fn builtin_or(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
         .iter()
         .any(|x| vm.eval(&x).unwrap_or_default().is_truthy());
     Ok(Node::bool_obj(res))
+}
+
+fn builtin_if(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
+    let args = args_setup!(args_list, "if", 2, 3);
+    let check = vm.eval(&args[0])?;
+
+    if check.is_truthy() {
+        vm.eval(&args[1])
+    } else if args.len() == 3 {
+        vm.eval(&args[2])
+    } else {
+        Ok(Node::bool_obj(false))
+    }
 }

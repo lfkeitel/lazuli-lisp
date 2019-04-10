@@ -6,7 +6,7 @@ pub struct ConsList<T: PartialEq> {
     length: usize,
 }
 
-type Link<T: PartialEq> = Option<Rc<Node<T>>>;
+type Link<T> = Option<Rc<Node<T>>>;
 
 struct Node<T: PartialEq> {
     elem: T,
@@ -34,11 +34,7 @@ impl<T: PartialEq> ConsList<T> {
     pub fn tail(&self) -> ConsList<T> {
         ConsList {
             head: self.head.as_ref().and_then(|node| node.next.clone()),
-            length: if self.length > 0 {
-                self.length() - 1
-            } else {
-                0
-            },
+            length: if self.length > 0 { self.length - 1 } else { 0 },
         }
     }
 
@@ -52,11 +48,11 @@ impl<T: PartialEq> ConsList<T> {
         }
     }
 
-    pub fn empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.head.is_none()
     }
 
-    pub fn length(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.length
     }
 }

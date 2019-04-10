@@ -24,7 +24,7 @@ impl ::std::fmt::Debug for Program {
 
 thread_local! {
     pub static TRUE_KW: Node = Node::new_keyword("t");
-    pub static FALSE_KW: Node = Node::new_keyword("f"); // Or rather, falsey
+    pub static FALSE_KW: Node = Node::new_keyword("f");
 }
 
 #[derive(Clone)]
@@ -66,7 +66,14 @@ impl Node {
     }
 
     pub fn is_truthy(&self) -> bool {
-        TRUE_KW.with(|t| self == t)
+        match self {
+            Node::Symbol(_) => true,
+            Node::Keyword(_) => TRUE_KW.with(|t| self == t),
+            Node::Number(n) => *n != 0,
+            Node::String(s) => !s.is_empty(),
+            Node::List(l) => !l.is_empty(),
+            Node::Function(_) => true,
+        }
     }
 }
 
@@ -107,7 +114,7 @@ impl ::std::fmt::Display for Node {
             Node::Symbol(v) => write!(f, "{}", v.borrow()),
             Node::Keyword(v) => write!(f, "{}", v),
             Node::Number(v) => write!(f, "{}", v),
-            Node::String(v) => write!(f, "\"{}\"", v),
+            Node::String(v) => write!(f, "{}", v),
             Node::List(v) => {
                 let mut s = String::new();
                 v.iter().for_each(|item| s.push_str(&format!("{} ", item)));
@@ -120,7 +127,10 @@ impl ::std::fmt::Display for Node {
 
 impl ::std::fmt::Debug for Node {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        write!(f, "{}", self)
+        match self {
+            Node::String(v) => write!(f, "\"{}\"", v),
+            _ => write!(f, "{}", self),
+        }
     }
 }
 
@@ -184,16 +194,13 @@ impl Symbol {
 
 impl ::std::fmt::Display for Symbol {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        match &self.value() {
-            Node::String(s) => write!(f, "{}", s),
-            n => write!(f, "{}", n),
-        }
+        write!(f, "{}", self.value())
     }
 }
 
 impl ::std::fmt::Debug for Symbol {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        write!(f, "{}", self)
+        write!(f, "{:?}", self.value())
     }
 }
 
