@@ -390,10 +390,60 @@ fn builtin_quote(_vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String
     Ok(args[0].clone())
 }
 
-fn builtin_quasiquote(_vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
+fn builtin_quasiquote(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
     // TODO: Expand internal unquotes within a list
     let args = args_setup!(args_list, "quasiquote", 1);
-    Ok(args[0].clone())
+    let arg = match args[0] {
+        Node::List(l) => l,
+        _ => unreachable!(),
+    };
+
+    let mut unquoted = Vec::with_capacity(arg.len());
+
+    for item in arg.iter() {
+        match item {
+            Node::List(l) => {
+                if l.is_empty() {
+                    unquoted.push(item.clone());
+                    continue;
+                }
+
+                if let Node::Symbol(s) = l.head().unwrap() {
+                    match s.borrow().name() {
+                        "UNQUOTE" => {
+                            unquoted.push(vm.eval(l.tail().head().unwrap())?);
+                        }
+                        "UNQUOTE-SPLICE" => {
+                            let evaled = vm.eval(l.tail().head().unwrap())?;
+                            if let Node::List(l) = evaled {
+                                for e in l.iter() {
+                                    unquoted.push(e.clone());
+                                }
+                            } else {
+                                return Err(format!(
+                                    "unquote-splice must return a list, got {}",
+                                    evaled.type_str()
+                                ));
+                            }
+                        }
+                        _ => unquoted.push(item.clone()),
+                    }
+                } else {
+                    unquoted.push(item.clone());
+                }
+            }
+            _ => unquoted.push(item.clone()), // Only lists get special treatment
+        }
+    }
+
+    Ok(object::Node::List(
+        unquoted
+            .into_iter()
+            .rev()
+            .fold(object::cons_list::ConsList::new(), |acc, elem| {
+                acc.append(elem)
+            }),
+    ))
 }
 
 fn builtin_eval(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
