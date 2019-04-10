@@ -112,7 +112,7 @@ impl ::std::fmt::Display for Node {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         match self {
             Node::Symbol(v) => write!(f, "{}", v.borrow()),
-            Node::Keyword(v) => write!(f, "{}", v),
+            Node::Keyword(v) => write!(f, ":{}", v),
             Node::Number(v) => write!(f, "{}", v),
             Node::String(v) => write!(f, "{}", v),
             Node::List(v) => {
@@ -120,7 +120,7 @@ impl ::std::fmt::Display for Node {
                 v.iter().for_each(|item| s.push_str(&format!("{} ", item)));
                 write!(f, "({})", s.trim_end())
             }
-            Node::Function(_) => write!(f, "function"),
+            Node::Function(_) => write!(f, "#<callable>"),
         }
     }
 }
