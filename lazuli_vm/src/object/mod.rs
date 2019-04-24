@@ -27,6 +27,8 @@ thread_local! {
     pub static FALSE_KW: Node = Node::new_keyword("f");
 }
 
+type HashMapRef = Rc<RefCell<HashMap<String, Node>>>;
+
 #[derive(Clone)]
 pub enum Node {
     Symbol(SymbolRef),
@@ -35,6 +37,7 @@ pub enum Node {
     String(String),
     List(ConsList<Node>),
     Function(Callable),
+    Map(HashMapRef),
 }
 
 impl Node {
@@ -42,19 +45,16 @@ impl Node {
         Node::List(ConsList::new())
     }
 
-    pub fn type_str(&self) -> &str {
-        match self {
-            Node::Symbol(_) => "Symbol",
-            Node::Keyword(_) => "Keyword",
-            Node::Number(_) => "Number",
-            Node::String(_) => "String",
-            Node::List(_) => "List",
-            Node::Function(_) => "Function",
-        }
-    }
-
     pub fn new_keyword(name: &str) -> Self {
         Node::Keyword(str_to_symbol_name(name))
+    }
+
+    pub fn from_hashmap(m: HashMap<String, Node>) -> Self {
+        Node::Map(Rc::new(RefCell::new(m)))
+    }
+
+    pub fn from_string(s: String) -> Self {
+        Node::String(s)
     }
 
     pub fn bool_obj(b: bool) -> Node {
@@ -65,14 +65,25 @@ impl Node {
         }
     }
 
+    pub fn type_str(&self) -> &str {
+        match self {
+            Node::Symbol(_) => "Symbol",
+            Node::Keyword(_) => "Keyword",
+            Node::Number(_) => "Number",
+            Node::String(_) => "String",
+            Node::List(_) => "List",
+            Node::Function(_) => "Function",
+            Node::Map(_) => "Map",
+        }
+    }
+
     pub fn is_truthy(&self) -> bool {
         match self {
-            Node::Symbol(_) => true,
+            Node::Symbol(_) | Node::Function(_) | Node::Map(_) => true,
             Node::Keyword(_) => TRUE_KW.with(|t| self == t),
             Node::Number(n) => *n != 0,
             Node::String(s) => !s.is_empty(),
             Node::List(l) => !l.is_empty(),
-            Node::Function(_) => true,
         }
     }
 }
@@ -121,6 +132,13 @@ impl ::std::fmt::Display for Node {
                 write!(f, "({})", s.trim_end())
             }
             Node::Function(_) => write!(f, "#<callable>"),
+            Node::Map(v) => {
+                write!(f, "{{")?;
+                for (k, v) in v.borrow().iter() {
+                    write!(f, "{} => {}, ", k, v)?;
+                }
+                write!(f, "}}")
+            }
         }
     }
 }

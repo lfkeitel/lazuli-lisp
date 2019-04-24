@@ -153,6 +153,16 @@ impl VM {
         }
     }
 
+    pub fn eval_items(&mut self, items: &[&Node]) -> Result<Vec<Node>, String> {
+        let mut results = Vec::with_capacity(items.len());
+
+        for item in items {
+            results.push(self.eval(item)?);
+        }
+
+        Ok(results)
+    }
+
     fn eval_function(&mut self, func: &Callable, args: ConsList<Node>) -> Result<Node, String> {
         match func {
             Callable::Builtin(f) => f(self, args),
@@ -570,5 +580,20 @@ fn builtin_if(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
         vm.eval(&args[2])
     } else {
         Ok(Node::bool_obj(false))
+    }
+}
+
+fn builtin_get(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
+    let args = args_setup!(args_list, "get", ==, 2);
+
+    if let Node::Map(m) = vm.eval(&args[0])? {
+        let key = vm.eval(&args[1])?;
+
+        match m.borrow().get(&format!("{}", key)) {
+            Some(n) => Ok(n.clone()),
+            None => Ok(Node::empty_list()),
+        }
+    } else {
+        Err("get requires a hashmap as the first argument".to_owned())
     }
 }
