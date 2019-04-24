@@ -142,7 +142,8 @@ pub fn symbolref_to_node(sym: SymbolRef) -> Node {
 }
 
 pub fn str_to_symbol_name(s: &str) -> String {
-    s.to_uppercase().to_owned()
+    s.to_owned()
+    //s.to_uppercase().to_owned()
 }
 
 pub struct Symbol {

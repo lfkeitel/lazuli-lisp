@@ -424,10 +424,10 @@ fn builtin_quasiquote(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, St
 
                 if let Node::Symbol(s) = l.head().unwrap() {
                     match s.borrow().name() {
-                        "UNQUOTE" => {
+                        "unquote" => {
                             unquoted.push(vm.eval(l.tail().head().unwrap())?);
                         }
-                        "UNQUOTE-SPLICE" => {
+                        "unquote-splice" => {
                             let evaled = vm.eval(l.tail().head().unwrap())?;
                             if let Node::List(l) = evaled {
                                 for e in l.iter() {
