@@ -6,6 +6,7 @@ use crate::object::{self, Callable, Function, Node, Program, Symbol};
 #[derive(Default)]
 pub struct VM {
     symbols: env::EnvRef,
+    cmd_not_found: Option<Callable>,
 }
 
 macro_rules! make_builtin {
@@ -79,6 +80,7 @@ impl VM {
     pub fn new() -> Self {
         let vm = VM {
             symbols: env::Env::new().into_ref(),
+            cmd_not_found: None,
         };
 
         make_builtin!(vm, "define", builtin_defvar);
@@ -107,23 +109,33 @@ impl VM {
         make_builtin!(vm, "or", builtin_or);
         make_builtin!(vm, "if", builtin_if);
 
+        make_builtin!(vm, "get", builtin_get);
+
         vm
     }
 
     pub fn with_env(env: env::EnvRef) -> Self {
-        VM { symbols: env }
+        VM {
+            symbols: env,
+            cmd_not_found: None,
+        }
+    }
+
+    pub fn set_cmd_not_found(&mut self, c: Callable) {
+        self.cmd_not_found = Some(c);
     }
 
     pub fn add_symbol(&mut self, sym: object::SymbolRef) {
         self.symbols.borrow_mut().set_symbol(sym);
     }
 
-    pub fn run(&mut self, program: &Program) -> Result<(), String> {
+    pub fn run(&mut self, program: &Program) -> Result<Node, String> {
         // println!("{:?}", self.symbols);
+        let mut ret = Node::empty_list();
         for form in program.iter() {
-            self.eval(&form).map(|_| ())?
+            ret = self.eval(&form)?
         }
-        Ok(())
+        Ok(ret)
     }
 
     pub fn eval(&mut self, form: &Node) -> Result<Node, String> {
@@ -184,6 +196,8 @@ impl VM {
             let sym = sym_table_ref.borrow();
             return if let Some(func) = &sym.function {
                 self.eval_function(&func, form.tail())
+            } else if let Some(c) = &self.cmd_not_found {
+                self.eval_function(&c.clone(), form.clone())
             } else {
                 Err(format!("Undefined function {}", sym.name()))
             };
