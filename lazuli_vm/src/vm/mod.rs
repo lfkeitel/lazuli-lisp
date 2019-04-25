@@ -114,6 +114,11 @@ impl VM {
         make_builtin!(vm, "make-map", builtin_make_map);
         make_builtin!(vm, "get-map", builtin_get_map);
         make_builtin!(vm, "set-map", builtin_set_map);
+        make_builtin!(vm, "contains-map", builtin_contains_map);
+
+        make_builtin!(vm, "get-prop", builtin_get_prop);
+        make_builtin!(vm, "set-prop", builtin_set_prop);
+        make_builtin!(vm, "has-prop", builtin_has_prop);
 
         make_builtin!(vm, "expand-macro", builtin_expand_macro);
 
@@ -607,7 +612,7 @@ fn builtin_get_map(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, Strin
             None => Ok(Node::Empty),
         }
     } else {
-        Err("get requires a hashmap as the first argument".to_owned())
+        Err("get-map requires a hashmap as the first argument".to_owned())
     }
 }
 
@@ -642,7 +647,19 @@ fn builtin_set_map(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, Strin
             None => Ok(Node::Empty),
         }
     } else {
-        Err("get requires a hashmap as the first argument".to_owned())
+        Err("set-map requires a hashmap as the first argument".to_owned())
+    }
+}
+
+fn builtin_contains_map(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
+    let args = args_setup!(args_list, "contains-map", ==, 2);
+
+    if let Node::Map(m) = vm.eval(&args[0])? {
+        let key = vm.eval(&args[1])?;
+
+        Ok(Node::bool_obj(m.borrow().contains_key(&format!("{}", key))))
+    } else {
+        Err("contains-map requires a hashmap as the first argument".to_owned())
     }
 }
 
@@ -689,5 +706,54 @@ fn builtin_expand_macro(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, 
         }
     } else {
         Ok(Node::Empty)
+    }
+}
+
+fn builtin_get_prop(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
+    let args = args_setup!(args_list, "get-prop", ==, 2);
+
+    if let Node::Symbol(s) = vm.eval(&args[0])? {
+        let real_sym = vm.symbols.borrow().get_symbol(s.borrow().name());
+        let real_sym_b = real_sym.borrow();
+        let key = vm.eval(&args[1])?;
+
+        match real_sym_b.get_property(&format!("{}", key)) {
+            Some(n) => Ok(n.clone()),
+            None => Ok(Node::Empty),
+        }
+    } else {
+        Err("get-prop requires a Symbol as the first argument".to_owned())
+    }
+}
+
+fn builtin_set_prop(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
+    let args = args_setup!(args_list, "set-prop", ==, 3);
+
+    if let Node::Symbol(s) = vm.eval(&args[0])? {
+        let real_sym = vm.symbols.borrow().get_symbol(s.borrow().name());
+        let mut real_sym_b = real_sym.borrow_mut();
+        let key = vm.eval(&args[1])?;
+        let val = vm.eval(&args[2])?;
+
+        match real_sym_b.set_property(&format!("{}", key), val) {
+            Some(n) => Ok(n),
+            None => Ok(Node::Empty),
+        }
+    } else {
+        Err("set-prop requires a Symbol as the first argument".to_owned())
+    }
+}
+
+fn builtin_has_prop(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
+    let args = args_setup!(args_list, "has-prop", ==, 2);
+
+    if let Node::Symbol(s) = vm.eval(&args[0])? {
+        let real_sym = vm.symbols.borrow().get_symbol(s.borrow().name());
+        let real_sym_b = real_sym.borrow();
+        let key = vm.eval(&args[1])?;
+
+        Ok(Node::bool_obj(real_sym_b.has_property(&format!("{}", key))))
+    } else {
+        Err("has-prop requires a Symbol as the first argument".to_owned())
     }
 }

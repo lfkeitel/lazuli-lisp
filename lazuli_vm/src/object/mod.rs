@@ -171,7 +171,7 @@ impl ::std::fmt::Debug for Node {
     }
 }
 
-// type SymbolProps = HashMap<Symbol, Node>;
+type SymbolProps = HashMap<String, Node>;
 pub type SymbolRef = Rc<RefCell<Symbol>>;
 
 pub fn symbolref_to_node(sym: SymbolRef) -> Node {
@@ -187,7 +187,7 @@ pub struct Symbol {
     name: String,
     pub value: Option<Node>, // Used when this symbol is evaulated outside a callable context
     pub function: Option<Callable>, // Used when this symbol is evaluated as a callable object
-                             // properties: Option<SymbolProps>, // Only created when needed
+    properties: Option<RefCell<SymbolProps>>, // Only created when needed
 }
 
 impl Symbol {
@@ -196,7 +196,7 @@ impl Symbol {
             name: str_to_symbol_name(&name),
             value: None,
             function: None,
-            // properties: None,
+            properties: None,
         }
     }
 
@@ -205,7 +205,7 @@ impl Symbol {
             name: str_to_symbol_name(&name),
             value: None,
             function: Some(Callable::Builtin(func)),
-            // properties: None,
+            properties: None,
         }
     }
 
@@ -214,7 +214,7 @@ impl Symbol {
             name: str_to_symbol_name(name),
             value: Some(val),
             function: None,
-            // properties: None,
+            properties: None,
         }
     }
 
@@ -235,6 +235,31 @@ impl Symbol {
             val.clone()
         } else {
             Node::String(self.name.clone())
+        }
+    }
+
+    pub fn set_property(&mut self, key: &str, value: Node) -> Option<Node> {
+        if self.properties.is_none() {
+            self.properties = Some(RefCell::new(HashMap::with_capacity(2)));
+        }
+
+        match &self.properties {
+            Some(m) => m.borrow_mut().insert(key.to_owned(), value),
+            None => None,
+        }
+    }
+
+    pub fn get_property(&self, key: &str) -> Option<Node> {
+        match &self.properties {
+            Some(m) => m.borrow().get(key).cloned(),
+            None => None,
+        }
+    }
+
+    pub fn has_property(&self, key: &str) -> bool {
+        match &self.properties {
+            Some(m) => m.borrow().contains_key(key),
+            None => false,
         }
     }
 }

@@ -50,3 +50,10 @@ Square brackets indicate optional arguments.
 `(make-map KEY VALUE [KEY VALUE...])`
 `(get-map MAP KEY)`
 `(set-map MAP KEY VALUE)`
+`(contains-map MAP KEY)`
+
+## Symbol Properties
+
+`(set-prop SYM KEY VALUE)`
+`(get-prop SYM KEY)`
+`(has-prop SYM KEY)`
