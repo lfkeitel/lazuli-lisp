@@ -115,6 +115,8 @@ impl VM {
         make_builtin!(vm, "get-map", builtin_get_map);
         make_builtin!(vm, "set-map", builtin_set_map);
 
+        make_builtin!(vm, "expand-macro", builtin_expand_macro);
+
         vm
     }
 
@@ -371,8 +373,9 @@ fn builtin_lambda(_vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, Strin
         Node::List(l) => l,
         _ => {
             return Err(format!(
-                "lambda expected first argument to be a list, got {}",
-                args[0].type_str()
+                "lambda expected first argument to be a list, got {} ({})",
+                args[0].type_str(),
+                args[0]
             ));
         }
     };
@@ -398,7 +401,10 @@ fn builtin_lambda(_vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, Strin
 
 fn builtin_print(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
     for arg in args_list.iter() {
-        print!("{} ", vm.eval(arg)?);
+        match vm.eval(arg)? {
+            Node::List(l) => print!("{:?} ", l),
+            n => print!("{} ", n),
+        }
     }
     println!("");
     Ok(Node::Empty)
@@ -454,7 +460,10 @@ fn builtin_quasiquote(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, St
                                 ));
                             }
                         }
-                        _ => unquoted.push(item.clone()),
+                        _ => unquoted.push(builtin_quasiquote(
+                            vm,
+                            ConsList::new().append(item.clone()),
+                        )?), // Recursively unquote inner lists
                     }
                 } else {
                     unquoted.push(item.clone());
