@@ -18,13 +18,11 @@ fn main() {
 }
 
 fn compile_file(path: &str) {
-    println!("Compiling {}", path);
     let src_path = Path::new(path);
     let code = compiler::compile_file(src_path).unwrap_or_else(|e| {
         eprintln!("{}", e);
         std::process::exit(1);
     });
-    // println!("{:?}", code);
 
     let mut vm = vm::VM::new();
     if let Err(e) = vm.run(&code) {

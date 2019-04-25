@@ -51,6 +51,7 @@ impl<'a> Lexer<'a> {
 
         l.read_char();
         l.read_char();
+        l.col = 0;
         l
     }
 
@@ -146,6 +147,14 @@ impl<'a> Iterator for Lexer<'a> {
         self.devour_whitespace();
 
         let tok = match self.cur_ch {
+            b'#' => {
+                // Skip shebang line in a script
+                if self.line == 1 && self.col == 0 {
+                    self.read_single_line_comment();
+                    return self.next();
+                }
+                some_token!(TokenType::Illegal)
+            }
             b'(' => some_token!(TokenType::LParen),
             b')' => some_token!(TokenType::RParen),
             b'`' => some_token!(TokenType::Quasiquote),
