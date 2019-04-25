@@ -1,11 +1,13 @@
 mod env;
 
+use std::collections::HashMap;
+
 use crate::object::cons_list::ConsList;
 use crate::object::{self, Callable, Function, Node, Program, Symbol};
 
 #[derive(Default)]
 pub struct VM {
-    symbols: env::EnvRef,
+    pub symbols: env::EnvRef,
     cmd_not_found: Option<Callable>,
 }
 
@@ -109,7 +111,9 @@ impl VM {
         make_builtin!(vm, "or", builtin_or);
         make_builtin!(vm, "if", builtin_if);
 
-        make_builtin!(vm, "get", builtin_get);
+        make_builtin!(vm, "make-map", builtin_make_map);
+        make_builtin!(vm, "get-map", builtin_get_map);
+        make_builtin!(vm, "set-map", builtin_set_map);
 
         vm
     }
@@ -579,21 +583,102 @@ fn builtin_if(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
     } else if args.len() == 3 {
         vm.eval(&args[2])
     } else {
-        Ok(Node::bool_obj(false))
+        Ok(Node::Empty)
     }
 }
 
-fn builtin_get(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
-    let args = args_setup!(args_list, "get", ==, 2);
+fn builtin_get_map(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
+    let args = args_setup!(args_list, "get-map", ==, 2);
 
     if let Node::Map(m) = vm.eval(&args[0])? {
         let key = vm.eval(&args[1])?;
 
         match m.borrow().get(&format!("{}", key)) {
             Some(n) => Ok(n.clone()),
-            None => Ok(Node::empty_list()),
+            None => Ok(Node::Empty),
         }
     } else {
         Err("get requires a hashmap as the first argument".to_owned())
+    }
+}
+
+fn builtin_make_map(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
+    let args = args_setup!(args_list);
+
+    if args.len() % 2 != 0 {
+        return Err("make-map expected pairs of arguments, received uneven arguments".to_owned());
+    }
+
+    let mut map = HashMap::with_capacity(args.len() / 2);
+
+    for i in 0..(args.len() / 2) {
+        let key = vm.eval(&args[i * 2])?;
+        let val = vm.eval(&args[(i * 2) + 1])?;
+        map.insert(format!("{}", key), val);
+    }
+
+    Ok(Node::from_hashmap(map))
+}
+
+fn builtin_set_map(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
+    let args = args_setup!(args_list, "set-map", ==, 3);
+
+    if let Node::Map(m) = vm.eval(&args[0])? {
+        let key = vm.eval(&args[1])?;
+        let val = vm.eval(&args[2])?;
+
+        let prev = m.borrow_mut().insert(format!("{}", key), val);
+        match prev {
+            Some(v) => Ok(v),
+            None => Ok(Node::Empty),
+        }
+    } else {
+        Err("get requires a hashmap as the first argument".to_owned())
+    }
+}
+
+fn builtin_expand_macro(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
+    let args = args_setup!(args_list, "expand-macro", ==, 1);
+
+    let list_arg = match args[0] {
+        Node::List(l) => l,
+        _ => {
+            return Err(format!(
+                "expand-macro expected argument to be a list, got {}",
+                args[0].type_str()
+            ));
+        }
+    };
+
+    let h = list_arg.head();
+    if h.is_none() {
+        return Ok(Node::Empty);
+    }
+
+    let head = h.unwrap();
+    if let Node::Symbol(sym_ref) = &head {
+        let sym_table_ref = vm.symbols.borrow().get_symbol(sym_ref.borrow().name());
+        let sym = sym_table_ref.borrow();
+        if let Some(func) = &sym.function {
+            if let Callable::Macro(m) = func {
+                let macro_args = list_arg.tail();
+                let args = args_setup!(macro_args, "<func>", m.params.len());
+                let mut new_env = env::Env::with_parent(vm.symbols.clone());
+
+                for (i, arg) in args.iter().enumerate() {
+                    let mut sym = Symbol::new(&m.params[i]);
+                    sym.value = Some((*arg).clone());
+                    new_env.set_symbol(sym.into_ref());
+                }
+
+                VM::with_env(new_env.into_ref()).eval(&m.body)
+            } else {
+                Err(format!("Undefined macro {}", sym.name()))
+            }
+        } else {
+            Err(format!("Undefined macro {}", sym.name()))
+        }
+    } else {
+        Ok(Node::Empty)
     }
 }
