@@ -288,7 +288,7 @@ fn builtin_setq(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> 
         vm.symbols.borrow_mut().set_symbol(arg1_sym.clone());
     }
 
-    Ok(Node::bool_obj(false))
+    Ok(Node::Empty)
 }
 
 fn builtin_setf(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
@@ -312,7 +312,7 @@ fn builtin_setf(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> 
     }
 
     vm.symbols.borrow_mut().set_symbol(arg1_sym.clone());
-    Ok(Node::bool_obj(false))
+    Ok(Node::Empty)
 }
 
 fn builtin_defmacro(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
@@ -397,7 +397,7 @@ fn builtin_print(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String>
         print!("{} ", vm.eval(arg)?);
     }
     println!("");
-    Ok(Node::bool_obj(false))
+    Ok(Node::Empty)
 }
 
 fn builtin_list(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
@@ -500,7 +500,7 @@ fn builtin_debug_print_symbol_table(
     // Collect into a vector to make it easier to work with args
     args_setup!(args_list, "debug-print-symbol-table", ==, 0);
     println!("{:?}", vm.symbols);
-    Ok(Node::bool_obj(false))
+    Ok(Node::Empty)
 }
 
 macro_rules! arithmetic_fn {

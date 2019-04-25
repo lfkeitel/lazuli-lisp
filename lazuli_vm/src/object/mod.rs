@@ -38,6 +38,7 @@ pub enum Node {
     List(ConsList<Node>),
     Function(Callable),
     Map(HashMapRef),
+    Empty,
 }
 
 impl Node {
@@ -74,6 +75,7 @@ impl Node {
             Node::List(_) => "List",
             Node::Function(_) => "Function",
             Node::Map(_) => "Map",
+            Node::Empty => "Empty",
         }
     }
 
@@ -84,6 +86,7 @@ impl Node {
             Node::Number(n) => *n != 0,
             Node::String(s) => !s.is_empty(),
             Node::List(l) => !l.is_empty(),
+            Node::Empty => false,
         }
     }
 }
@@ -100,6 +103,8 @@ impl PartialEq for Node {
             (Node::String(v1), Node::String(v2)) => v1 == v2,
             (Node::Function(v1), Node::Function(v2)) => v1 == v2,
             (Node::List(v1), Node::List(v2)) => v1 == v2,
+            (Node::Map(v1), Node::Map(v2)) => v1 == v2,
+            (Node::Empty, Node::Empty) => true,
             _ => false,
         }
     }
@@ -122,6 +127,7 @@ impl FromStr for Node {
 impl ::std::fmt::Display for Node {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         match self {
+            Node::Empty => write!(f, "Empty"),
             Node::Symbol(v) => write!(f, "{}", v.borrow()),
             Node::Keyword(v) => write!(f, ":{}", v),
             Node::Number(v) => write!(f, "{}", v),
@@ -135,7 +141,7 @@ impl ::std::fmt::Display for Node {
             Node::Map(v) => {
                 write!(f, "{{")?;
                 for (k, v) in v.borrow().iter() {
-                    write!(f, "{} => {}, ", k, v)?;
+                    write!(f, "{} => {:?}, ", k, v)?;
                 }
                 write!(f, "}}")
             }
@@ -147,12 +153,25 @@ impl ::std::fmt::Debug for Node {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         match self {
             Node::String(v) => write!(f, "\"{}\"", v),
+            Node::List(v) => {
+                let mut s = String::new();
+                v.iter()
+                    .for_each(|item| s.push_str(&format!("{:?} ", item)));
+                write!(f, "({})", s.trim_end())
+            }
+            Node::Map(v) => {
+                write!(f, "{{")?;
+                for (k, v) in v.borrow().iter() {
+                    write!(f, "{:?} => {:?}, ", k, v)?;
+                }
+                write!(f, "}}")
+            }
             _ => write!(f, "{}", self),
         }
     }
 }
 
-type SymbolProps = HashMap<Symbol, Node>;
+// type SymbolProps = HashMap<Symbol, Node>;
 pub type SymbolRef = Rc<RefCell<Symbol>>;
 
 pub fn symbolref_to_node(sym: SymbolRef) -> Node {
@@ -168,7 +187,7 @@ pub struct Symbol {
     name: String,
     pub value: Option<Node>, // Used when this symbol is evaulated outside a callable context
     pub function: Option<Callable>, // Used when this symbol is evaluated as a callable object
-    properties: Option<SymbolProps>, // Only created when needed
+                             // properties: Option<SymbolProps>, // Only created when needed
 }
 
 impl Symbol {
@@ -177,16 +196,25 @@ impl Symbol {
             name: str_to_symbol_name(&name),
             value: None,
             function: None,
-            properties: None,
+            // properties: None,
         }
     }
 
-    pub fn new_with_builtin(name: &str, func: BuiltinFn) -> Self {
+    pub fn with_builtin(name: &str, func: BuiltinFn) -> Self {
         Symbol {
             name: str_to_symbol_name(&name),
             value: None,
             function: Some(Callable::Builtin(func)),
-            properties: None,
+            // properties: None,
+        }
+    }
+
+    pub fn with_value(name: &str, val: Node) -> Self {
+        Symbol {
+            name: str_to_symbol_name(name),
+            value: Some(val),
+            function: None,
+            // properties: None,
         }
     }
 
