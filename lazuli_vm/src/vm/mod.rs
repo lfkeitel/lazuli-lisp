@@ -157,6 +157,7 @@ impl VM {
                 Ok(self.symbols.borrow().get_symbol(&sym_name).borrow().value())
             }
             Node::Number(num) => Ok(Node::Number(*num)),
+            Node::Float(num) => Ok(Node::Float(*num)),
             Node::String(string) => Ok(Node::String(string.to_owned())),
             Node::List(list) => self.eval_list(&list),
             Node::Keyword(v) => Ok(Node::Keyword(v.clone())),
@@ -527,33 +528,49 @@ macro_rules! arithmetic_fn {
             // Collect into a vector to make it easier to work with args
             let args = args_setup!(args_list, $sym, >=, 2);
 
-            // Get starting value
-            let mut val = {
-                let evaled_arg = vm.eval(args[0])?;
-                match evaled_arg {
-                    Node::Number(n) => n,
-                    n => return Err(format!("{} expected number arguments, got {}", $sym, n.type_str())),
-                }
-            };
+            match vm.eval(args[0])? {
+                Node::Number(n) => {
+                    let mut val = n;
 
-            for arg in &args[1..] {
-                let evaled_arg = vm.eval(arg)?;
+                    for arg in &args[1..] {
+                        let evaled_arg = vm.eval(arg)?;
 
-                match evaled_arg {
-                    Node::Number(n) => val = val $oper n,
-                    n => return Err(format!("{} expected number arguments, got {}", $sym, n.type_str())),
+                        match evaled_arg {
+                            Node::Number(n) => val $oper n,
+                            Node::Float(n) => val $oper n as i64,
+                            n => return Err(format!("{} expected number arguments, got {}", $sym, n.type_str())),
+                        }
+                    }
+
+                    Ok(object::Node::Number(val))
                 }
+
+                Node::Float(n) => {
+                    let mut val = n;
+
+                    for arg in &args[1..] {
+                        let evaled_arg = vm.eval(arg)?;
+
+                        match evaled_arg {
+                            Node::Number(n) => val $oper n as f64,
+                            Node::Float(n) => val $oper n,
+                            n => return Err(format!("{} expected float arguments, got {}", $sym, n.type_str())),
+                        }
+                    }
+
+                    Ok(object::Node::Float(val))
+                }
+
+                node => Err(format!("{} expected int or float arguments, got {}", $sym, node.type_str()))
             }
-
-            Ok(object::Node::Number(val))
         }
     };
 }
 
-arithmetic_fn!(builtin_add, +, "+");
-arithmetic_fn!(builtin_sub, -, "-");
-arithmetic_fn!(builtin_mul, *, "*");
-arithmetic_fn!(builtin_div, /, "/");
+arithmetic_fn!(builtin_add, +=, "+");
+arithmetic_fn!(builtin_sub, -=, "-");
+arithmetic_fn!(builtin_mul, *=, "*");
+arithmetic_fn!(builtin_div, /=, "/");
 
 fn builtin_eq(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
     let args = args_setup!(args_list, "eq", >=, 2);

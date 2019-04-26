@@ -182,6 +182,16 @@ impl<'a> Parser<'a> {
                 object::Node::Number(n)
             }
 
+            TokenType::Float => {
+                let n = self.cur_tok.literal.parse().map_err(|_| {
+                    ParserError::InvalidCode(format!(
+                        "{}: line {}, col {} Failed parsing float",
+                        self.cur_tok.file, self.cur_tok.line, self.cur_tok.col,
+                    ))
+                })?;
+                object::Node::Float(n)
+            }
+
             TokenType::String => object::Node::String(self.cur_tok.literal.clone()),
             TokenType::LParen => self.parse_list()?,
 
@@ -233,6 +243,7 @@ impl<'a> Parser<'a> {
                 return Err(self.tokens_err(&[
                     TokenType::LParen,
                     TokenType::Number,
+                    TokenType::Float,
                     TokenType::String,
                     TokenType::Symbol,
                     TokenType::Keyword,

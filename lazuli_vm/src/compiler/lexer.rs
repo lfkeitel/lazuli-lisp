@@ -109,13 +109,24 @@ impl<'a> Lexer<'a> {
         comm.trim().to_owned()
     }
 
-    fn read_number(&mut self) -> String {
+    fn read_number(&mut self) -> Token {
         let mut num = String::new();
-        while is_digit(self.cur_ch) || is_hex_digit(self.cur_ch) {
+        let mut maybe_float = false;
+
+        while is_digit(self.cur_ch) || is_hex_digit(self.cur_ch) || self.cur_ch == b'.' {
+            if self.cur_ch == b'.' {
+                maybe_float = true;
+            }
+
             num.write_char(char::from(self.cur_ch)).unwrap();
             self.read_char();
         }
-        num
+
+        if maybe_float {
+            Token::with_literal(TokenType::Float, num, self.line, self.col, &self.name)
+        } else {
+            Token::with_literal(TokenType::Number, num, self.line, self.col, &self.name)
+        }
     }
 }
 
@@ -177,7 +188,7 @@ impl<'a> Iterator for Lexer<'a> {
             0 => None,
             _ => {
                 if is_digit(self.cur_ch) {
-                    return some_token!(TokenType::Number, self.read_number());
+                    return Some(self.read_number());
                 } else if is_symbol(self.cur_ch) {
                     let col = self.col;
                     let lit = self.read_symbol();
