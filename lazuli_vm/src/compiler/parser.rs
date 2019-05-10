@@ -222,7 +222,7 @@ impl<'a> Parser<'a> {
                 }
             }
 
-            TokenType::Tilde => {
+            TokenType::Unquote => {
                 self.read_token();
                 let unquote_func = if self.cur_token_is(TokenType::At) {
                     self.read_token();

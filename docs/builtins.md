@@ -40,6 +40,8 @@ Square brackets indicate optional arguments.
 - `(progn () ()...)`
 - `(lambda (PARAMS, ...) BODY)`
 - `(eval VAL)`
+- `(loop BODY)`
+- `(while COND BODY)`
 
 ## List Manipulation
 
@@ -59,6 +61,11 @@ Square brackets indicate optional arguments.
 - `(and VAL...)`
 - `(or VAL...)`
 - `(if CONDITION TRUE [FALSE])`
+
+## Conversions
+
+- `(parse-int VAL)`
+- `(parse-float VAL)`
 
 ## Maps
 

@@ -12,7 +12,7 @@ pub enum TokenType {
     RParen,
     LParen,
     Quote,
-    Tilde,
+    Unquote,
     At,
 }
 
@@ -34,7 +34,7 @@ impl ::std::fmt::Display for TokenType {
                 TokenType::RParen => "RParen",
                 TokenType::LParen => "LParen",
                 TokenType::Quote => "Quote",
-                TokenType::Tilde => "Tilde",
+                TokenType::Unquote => "Unquote",
                 TokenType::At => "At",
             }
         )

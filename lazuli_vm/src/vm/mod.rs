@@ -96,6 +96,10 @@ impl VM {
         make_builtin!(vm, "lambda", builtin_lambda);
         make_builtin!(vm, "list", builtin_list);
         make_builtin!(vm, "eval", builtin_eval);
+        make_builtin!(vm, "loop", builtin_loop);
+        make_builtin!(vm, "while", builtin_while);
+        make_builtin!(vm, "parse-int", builtin_parse_int);
+        make_builtin!(vm, "parse-float", builtin_parse_float);
         make_builtin!(
             vm,
             "debug-print-symbol-table",
@@ -105,6 +109,8 @@ impl VM {
         make_builtin!(vm, "-", builtin_sub);
         make_builtin!(vm, "*", builtin_mul);
         make_builtin!(vm, "/", builtin_div);
+        make_builtin!(vm, "<", builtin_lt);
+        make_builtin!(vm, ">", builtin_gt);
         make_builtin!(vm, "eq", builtin_eq);
         make_builtin!(vm, "not", builtin_not);
         make_builtin!(vm, "and", builtin_and);
@@ -491,6 +497,27 @@ fn builtin_eval(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> 
     vm.eval(args[0])
 }
 
+fn builtin_loop(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
+    let args = args_setup!(args_list, "loop", 1);
+    loop {
+        vm.eval(args[0])?;
+    }
+}
+
+fn builtin_while(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
+    let args = args_setup!(args_list, "while", 2);
+
+    loop {
+        let cond = vm.eval(args[0])?;
+        if !cond.is_truthy() {
+            break;
+        }
+        vm.eval(args[1])?;
+    }
+
+    Ok(Node::Empty)
+}
+
 fn builtin_progn(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
     let args = args_setup!(args_list, "progn", >=, 1);
     let mut ret = Node::bool_obj(false);
@@ -568,6 +595,22 @@ arithmetic_fn!(builtin_add, +=, "+");
 arithmetic_fn!(builtin_sub, -=, "-");
 arithmetic_fn!(builtin_mul, *=, "*");
 arithmetic_fn!(builtin_div, /=, "/");
+
+fn builtin_gt(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
+    let args = args_setup!(args_list, ">", ==, 2);
+    let arg1 = vm.eval(args[0])?;
+    let arg2 = vm.eval(args[1])?;
+
+    Ok(Node::bool_obj(arg1 > arg2))
+}
+
+fn builtin_lt(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
+    let args = args_setup!(args_list, "<", ==, 2);
+    let arg1 = vm.eval(args[0])?;
+    let arg2 = vm.eval(args[1])?;
+
+    Ok(Node::bool_obj(arg1 < arg2))
+}
 
 fn builtin_eq(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
     let args = args_setup!(args_list, "eq", >=, 2);
@@ -754,5 +797,43 @@ fn builtin_expand_macro(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, 
         }
     } else {
         Ok(Node::Empty)
+    }
+}
+
+fn builtin_parse_int(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
+    let args = args_setup!(args_list, "parse-int", ==, 1);
+    let input = vm.eval(&args[0])?;
+
+    match input {
+        Node::String(s) => {
+            if let Ok(i) = s.parse::<i64>() {
+                Ok(Node::Number(i))
+            } else {
+                Ok(Node::Empty)
+            }
+        }
+        _ => Err(format!(
+            "parse-int can only parse strings, {} given",
+            input.type_str()
+        )),
+    }
+}
+
+fn builtin_parse_float(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
+    let args = args_setup!(args_list, "parse-float", ==, 1);
+    let input = vm.eval(&args[0])?;
+
+    match input {
+        Node::String(s) => {
+            if let Ok(i) = s.parse::<f64>() {
+                Ok(Node::Float(i))
+            } else {
+                Ok(Node::Empty)
+            }
+        }
+        _ => Err(format!(
+            "parse-float can only parse strings, {} given",
+            input.type_str()
+        )),
     }
 }

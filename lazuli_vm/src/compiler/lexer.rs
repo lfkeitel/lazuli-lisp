@@ -170,7 +170,7 @@ impl<'a> Iterator for Lexer<'a> {
             b')' => some_token!(TokenType::RParen),
             b'`' => some_token!(TokenType::Quasiquote),
             b'\'' => some_token!(TokenType::Quote),
-            b'~' => some_token!(TokenType::Tilde),
+            b'%' => some_token!(TokenType::Unquote),
             b'@' => some_token!(TokenType::At),
             b'"' => {
                 let col = self.col;
@@ -223,8 +223,8 @@ fn is_symbol(ch: u8) -> bool {
         || ch == b'>'
         || ch == b'!'
         || ch == b'&'
-        || ch == b'%'
         || ch == b'.'
+        || ch == b'~'
 }
 
 fn is_letter(ch: u8) -> bool {

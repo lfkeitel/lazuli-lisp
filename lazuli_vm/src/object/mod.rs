@@ -1,6 +1,7 @@
 pub mod cons_list;
 
 use std::cell::RefCell;
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::str::FromStr;
@@ -110,6 +111,21 @@ impl PartialEq for Node {
             (Node::Map(v1), Node::Map(v2)) => v1 == v2,
             (Node::Empty, Node::Empty) => true,
             _ => false,
+        }
+    }
+}
+
+impl PartialOrd for Node {
+    fn partial_cmp(&self, other: &Node) -> Option<Ordering> {
+        match (self, other) {
+            (Node::Symbol(v1), Node::Symbol(v2)) => Some(v1.borrow().name.cmp(&(v2.borrow().name))),
+            (Node::Keyword(v1), Node::Keyword(v2)) => Some(v1.cmp(&v2)),
+            (Node::Number(v1), Node::Number(v2)) => Some(v1.cmp(&v2)),
+            (Node::Float(v1), Node::Float(v2)) => v1.partial_cmp(v2),
+            (Node::String(v1), Node::String(v2)) => Some(v1.cmp(&v2)),
+            (Node::List(v1), Node::List(v2)) => Some(v1.len().cmp(&(v2.len()))),
+            (Node::Empty, Node::Empty) => Some(Ordering::Equal),
+            _ => None,
         }
     }
 }

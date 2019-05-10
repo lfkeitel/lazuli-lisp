@@ -3,7 +3,7 @@
 ;; is executed. ~ only has an effect inside quasiquoted lists.
 ;; Here marked with `
 (define-syntax defun (name args body)
-    `(setf '~name (lambda ~args ~body)))
+    `(setf '%name (lambda %args %body)))
 
 ;; expand-macro will execute a macro and return the list generated
 ;; by the macro. This would normally be executed as an expression.
