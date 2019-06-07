@@ -1,6 +1,6 @@
 # Truthiness in Lazuli
 
-Lazuli use loose truthiness instead of a hard true/false boolean.
+Lazuli uses loose truthiness instead of a hard true/false boolean.
 
 The following values are considered "falsey":
 
