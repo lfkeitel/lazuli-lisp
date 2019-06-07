@@ -33,7 +33,7 @@ Square brackets indicate optional arguments.
 ## Quoting
 
 - `(quote VAL)` or `'()`
-- `(quasiquote VAL)` or `\`()`
+- `(quasiquote VAL)` or `` `()``
 
 ## Execution
 
@@ -46,6 +46,9 @@ Square brackets indicate optional arguments.
 ## List Manipulation
 
 - `(list ITEM...)`
+- `(concat LIST...)`
+- `(head LIST)`
+- `(tail LIST)`
 
 ## Arithmetic
 

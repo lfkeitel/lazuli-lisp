@@ -102,6 +102,9 @@ impl VM {
         make_builtin!(vm, "progn", builtin_progn);
         make_builtin!(vm, "lambda", builtin_lambda);
         make_builtin!(vm, "list", lists::make_list);
+        make_builtin!(vm, "concat", lists::concat);
+        make_builtin!(vm, "head", lists::head);
+        make_builtin!(vm, "tail", lists::tail);
         make_builtin!(vm, "eval", builtin_eval);
         make_builtin!(vm, "loop", builtin_loop);
         make_builtin!(vm, "while", builtin_while);
