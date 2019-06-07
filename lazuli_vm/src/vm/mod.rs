@@ -1,3 +1,4 @@
+mod builtins;
 mod env;
 
 use std::collections::HashMap;
@@ -5,6 +6,12 @@ use std::collections::HashMap;
 use crate::object::cons_list::ConsList;
 use crate::object::{self, Callable, Function, Node, Program, Symbol};
 
+
+use crate::vm::builtins::arithmetic;
+use crate::vm::builtins::lists;
+
+use crate::vm::builtins::logic;
+use crate::vm::builtins::quote;
 #[derive(Default)]
 pub struct VM {
     pub symbols: env::EnvRef,
@@ -12,7 +19,7 @@ pub struct VM {
 }
 
 macro_rules! make_builtin {
-    ($vm:ident, $sym:expr, $func:ident) => {{
+    ($vm:ident, $sym:expr, $func:expr) => {{
         let mut sym = object::Symbol::new($sym);
         sym.function = Some(object::Callable::Builtin($func));
         $vm.symbols.borrow_mut().set_symbol(sym.into_ref());
@@ -62,7 +69,7 @@ macro_rules! args_setup {
 
             if !(args.len() $oper $check) {
                 return Err(format!(
-                    args_setup_error!($oper),
+                    $crate::args_setup_error!($oper),
                     $sym,
                     $check,
                     args.len()
@@ -74,7 +81,7 @@ macro_rules! args_setup {
     };
 
     ($args_list:ident, $name:expr, $check:expr) => {
-        args_setup!($args_list, $name, ==, $check)
+        $crate::args_setup!($args_list, $name, ==, $check)
     };
 }
 
@@ -90,11 +97,11 @@ impl VM {
         make_builtin!(vm, "setq", builtin_setq);
         make_builtin!(vm, "setf", builtin_setf);
         make_builtin!(vm, "print", builtin_print);
-        make_builtin!(vm, "quote", builtin_quote);
-        make_builtin!(vm, "quasiquote", builtin_quasiquote);
+        make_builtin!(vm, "quote", quote::quote);
+        make_builtin!(vm, "quasiquote", quote::quasiquote);
         make_builtin!(vm, "progn", builtin_progn);
         make_builtin!(vm, "lambda", builtin_lambda);
-        make_builtin!(vm, "list", builtin_list);
+        make_builtin!(vm, "list", lists::make_list);
         make_builtin!(vm, "eval", builtin_eval);
         make_builtin!(vm, "loop", builtin_loop);
         make_builtin!(vm, "while", builtin_while);
@@ -105,17 +112,17 @@ impl VM {
             "debug-print-symbol-table",
             builtin_debug_print_symbol_table
         );
-        make_builtin!(vm, "+", builtin_add);
-        make_builtin!(vm, "-", builtin_sub);
-        make_builtin!(vm, "*", builtin_mul);
-        make_builtin!(vm, "/", builtin_div);
-        make_builtin!(vm, "<", builtin_lt);
-        make_builtin!(vm, ">", builtin_gt);
-        make_builtin!(vm, "eq", builtin_eq);
-        make_builtin!(vm, "not", builtin_not);
-        make_builtin!(vm, "and", builtin_and);
-        make_builtin!(vm, "or", builtin_or);
-        make_builtin!(vm, "if", builtin_if);
+        make_builtin!(vm, "+", arithmetic::add);
+        make_builtin!(vm, "-", arithmetic::sub);
+        make_builtin!(vm, "*", arithmetic::mul);
+        make_builtin!(vm, "/", arithmetic::div);
+        make_builtin!(vm, "<", logic::logic_lt);
+        make_builtin!(vm, ">", logic::logic_gt);
+        make_builtin!(vm, "eq", logic::logic_eq);
+        make_builtin!(vm, "not", logic::logic_not);
+        make_builtin!(vm, "and", logic::logic_and);
+        make_builtin!(vm, "or", logic::logic_or);
+        make_builtin!(vm, "if", logic::logic_if);
 
         make_builtin!(vm, "make-map", builtin_make_map);
 
@@ -221,8 +228,8 @@ impl VM {
             let sym = sym_table_ref.borrow();
             return if let Some(func) = &sym.function {
                 self.eval_function(&func, form.tail())
-            } else if let Some(c) = &self.cmd_not_found {
-                self.eval_function(&c.clone(), form.clone())
+            } else if let Some(c) = self.cmd_not_found.clone() {
+                self.eval_function(&c, form.clone())
             } else {
                 Err(format!("Undefined function {}", sym.name()))
             };
@@ -415,81 +422,8 @@ fn builtin_print(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String>
             n => print!("{} ", n),
         }
     }
-    println!("");
+    println!();
     Ok(Node::Empty)
-}
-
-fn builtin_list(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
-    let args = args_setup!(args_list);
-    let mut new_list = ConsList::new();
-    for item in args.iter().rev() {
-        new_list = new_list.append(vm.eval(item)?);
-    }
-    Ok(Node::List(new_list))
-}
-
-fn builtin_quote(_vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
-    let args = args_setup!(args_list, "quote", 1);
-    Ok(args[0].clone())
-}
-
-fn builtin_quasiquote(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
-    // TODO: Expand internal unquotes within a list
-    let args = args_setup!(args_list, "quasiquote", 1);
-    let arg = match args[0] {
-        Node::List(l) => l,
-        _ => unreachable!(),
-    };
-
-    let mut unquoted = Vec::with_capacity(arg.len());
-
-    for item in arg.iter() {
-        match item {
-            Node::List(l) => {
-                if l.is_empty() {
-                    unquoted.push(item.clone());
-                    continue;
-                }
-
-                if let Node::Symbol(s) = l.head().unwrap() {
-                    match s.borrow().name() {
-                        "unquote" => {
-                            unquoted.push(vm.eval(l.tail().head().unwrap())?);
-                        }
-                        "unquote-splice" => {
-                            let evaled = vm.eval(l.tail().head().unwrap())?;
-                            if let Node::List(l) = evaled {
-                                for e in l.iter() {
-                                    unquoted.push(e.clone());
-                                }
-                            } else {
-                                return Err(format!(
-                                    "unquote-splice must return a list, got {}",
-                                    evaled.type_str()
-                                ));
-                            }
-                        }
-                        _ => unquoted.push(builtin_quasiquote(
-                            vm,
-                            ConsList::new().append(item.clone()),
-                        )?), // Recursively unquote inner lists
-                    }
-                } else {
-                    unquoted.push(item.clone());
-                }
-            }
-            _ => unquoted.push(item.clone()), // Only lists get special treatment
-        }
-    }
-
-    Ok(object::Node::List(
-        unquoted
-            .into_iter()
-            .rev()
-            .fold(object::cons_list::ConsList::new(), |acc, elem| {
-                acc.append(elem)
-            }),
-    ))
 }
 
 fn builtin_eval(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
@@ -544,118 +478,6 @@ fn builtin_debug_print_symbol_table(
     args_setup!(args_list, "debug-print-symbol-table", ==, 0);
     println!("{:?}", vm.symbols);
     Ok(Node::Empty)
-}
-
-macro_rules! arithmetic_fn {
-    ($fnname:ident, $oper:tt, $sym:expr) => {
-        fn $fnname(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
-            // Collect into a vector to make it easier to work with args
-            let args = args_setup!(args_list, $sym, >=, 2);
-
-            match vm.eval(args[0])? {
-                Node::Number(n) => {
-                    let mut val = n;
-
-                    for arg in &args[1..] {
-                        let evaled_arg = vm.eval(arg)?;
-
-                        match evaled_arg {
-                            Node::Number(n) => val $oper n,
-                            Node::Float(n) => val $oper n as i64,
-                            n => return Err(format!("{} expected number arguments, got {}", $sym, n.type_str())),
-                        }
-                    }
-
-                    Ok(object::Node::Number(val))
-                }
-
-                Node::Float(n) => {
-                    let mut val = n;
-
-                    for arg in &args[1..] {
-                        let evaled_arg = vm.eval(arg)?;
-
-                        match evaled_arg {
-                            Node::Number(n) => val $oper n as f64,
-                            Node::Float(n) => val $oper n,
-                            n => return Err(format!("{} expected float arguments, got {}", $sym, n.type_str())),
-                        }
-                    }
-
-                    Ok(object::Node::Float(val))
-                }
-
-                node => Err(format!("{} expected int or float arguments, got {}", $sym, node.type_str()))
-            }
-        }
-    };
-}
-
-arithmetic_fn!(builtin_add, +=, "+");
-arithmetic_fn!(builtin_sub, -=, "-");
-arithmetic_fn!(builtin_mul, *=, "*");
-arithmetic_fn!(builtin_div, /=, "/");
-
-fn builtin_gt(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
-    let args = args_setup!(args_list, ">", ==, 2);
-    let arg1 = vm.eval(args[0])?;
-    let arg2 = vm.eval(args[1])?;
-
-    Ok(Node::bool_obj(arg1 > arg2))
-}
-
-fn builtin_lt(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
-    let args = args_setup!(args_list, "<", ==, 2);
-    let arg1 = vm.eval(args[0])?;
-    let arg2 = vm.eval(args[1])?;
-
-    Ok(Node::bool_obj(arg1 < arg2))
-}
-
-fn builtin_eq(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
-    let args = args_setup!(args_list, "eq", >=, 2);
-    let evaled_arg1 = vm.eval(args[0]).unwrap_or_default();
-
-    let res = args
-        .iter()
-        .skip(1)
-        .all(|x| vm.eval(&x).unwrap_or_default() == evaled_arg1);
-
-    Ok(Node::bool_obj(res))
-}
-
-fn builtin_not(_: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
-    let args = args_setup!(args_list, "not", ==, 1);
-    Ok(Node::bool_obj(!args[0].is_truthy()))
-}
-
-fn builtin_and(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
-    let args = args_setup!(args_list, "and", >=, 2);
-    let res = args
-        .iter()
-        .all(|x| vm.eval(&x).unwrap_or_default().is_truthy());
-    Ok(Node::bool_obj(res))
-}
-
-fn builtin_or(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
-    let args = args_setup!(args_list, "or", >=, 2);
-    let res = args
-        .iter()
-        .any(|x| vm.eval(&x).unwrap_or_default().is_truthy());
-    Ok(Node::bool_obj(res))
-}
-
-fn builtin_if(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
-    let args = args_setup!(args_list, "if", 2, 3);
-    let check = vm.eval(&args[0])?;
-
-    if check.is_truthy() {
-        vm.eval(&args[1])
-    } else if args.len() == 3 {
-        vm.eval(&args[2])
-    } else {
-        Ok(Node::Empty)
-    }
 }
 
 fn builtin_make_map(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
