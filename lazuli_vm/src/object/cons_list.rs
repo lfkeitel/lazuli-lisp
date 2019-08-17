@@ -25,7 +25,7 @@ impl<T: PartialEq> ConsList<T> {
         ConsList {
             length: self.length + 1,
             head: Some(Rc::new(Node {
-                elem: elem,
+                elem,
                 next: self.head.clone(),
             })),
         }

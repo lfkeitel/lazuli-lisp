@@ -33,7 +33,7 @@ impl fmt::Debug for ParserError {
 }
 
 pub struct Parser<'a> {
-    lexer: Box<&'a mut Iterator<Item = Token>>,
+    lexer: Box<&'a mut dyn Iterator<Item = Token>>,
     cur_tok: Token,
     peek_tok: Token,
 }
