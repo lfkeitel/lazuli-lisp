@@ -34,6 +34,8 @@ Square brackets indicate optional arguments.
 
 - `(quote VAL)` or `'()`
 - `(quasiquote VAL)` or `` `()``
+- `(unquote VAL)` or `%val`
+- `(unquote-splice LIST)` or `%@val`
 
 ## Execution
 
