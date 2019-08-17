@@ -2,20 +2,22 @@ mod builtins;
 mod env;
 
 use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 
 use crate::object::cons_list::ConsList;
 use crate::object::{self, Callable, Function, Node, Program, Symbol};
 
-
 use crate::vm::builtins::arithmetic;
+use crate::vm::builtins::import;
 use crate::vm::builtins::lists;
-
 use crate::vm::builtins::logic;
 use crate::vm::builtins::quote;
+
 #[derive(Default)]
 pub struct VM {
     pub symbols: env::EnvRef,
     cmd_not_found: Option<Callable>,
+    filenames: Vec<PathBuf>,
 }
 
 macro_rules! make_builtin {
@@ -90,8 +92,10 @@ impl VM {
         let vm = VM {
             symbols: env::Env::new().into_ref(),
             cmd_not_found: None,
+            filenames: Vec::new(),
         };
 
+        make_builtin!(vm, "include", import::include);
         make_builtin!(vm, "define", builtin_defvar);
         make_builtin!(vm, "define-syntax", builtin_defmacro);
         make_builtin!(vm, "setq", builtin_setq);
@@ -142,6 +146,7 @@ impl VM {
         VM {
             symbols: env,
             cmd_not_found: None,
+            filenames: Vec::new(),
         }
     }
 
@@ -151,6 +156,18 @@ impl VM {
 
     pub fn add_symbol(&mut self, sym: object::SymbolRef) {
         self.symbols.borrow_mut().set_symbol(sym);
+    }
+
+    pub fn add_filename<P: AsRef<Path>>(&mut self, name: P) {
+        self.filenames.push(name.as_ref().to_owned());
+    }
+
+    pub fn pop_filename(&mut self) -> Option<PathBuf> {
+        self.filenames.pop()
+    }
+
+    pub fn current_filename(&mut self) -> Option<&PathBuf> {
+        self.filenames.last()
     }
 
     pub fn run(&mut self, program: &Program) -> Result<Node, String> {

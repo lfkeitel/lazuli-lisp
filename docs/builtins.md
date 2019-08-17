@@ -44,6 +44,8 @@ Square brackets indicate optional arguments.
 - `(eval VAL)`
 - `(loop BODY)`
 - `(while COND BODY)`
+- `(include FILE)` - The file is included as if it was inline. All symbols are
+    accessable to the included script
 
 ## List Manipulation
 

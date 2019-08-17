@@ -5,6 +5,7 @@ use std::path::Path;
 use lazuli_vm::{compiler, vm};
 
 use clap::{App, Arg};
+use path_absolutize::*;
 
 fn main() {
     let app = App::new("Lazuli Lisp")
@@ -25,6 +26,7 @@ fn compile_file(path: &str) {
     });
 
     let mut vm = vm::VM::new();
+    vm.add_filename(src_path.absolutize().unwrap_or_default());
     if let Err(e) = vm.run(&code) {
         println!("Error: {}", e);
     }
