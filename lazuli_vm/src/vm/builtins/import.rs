@@ -3,6 +3,7 @@ use std::path::Path;
 
 use crate::args_setup;
 use crate::compiler;
+use crate::compiler::parser::ParserError;
 use crate::object::cons_list::ConsList;
 use crate::object::Node;
 use crate::vm::VM;
@@ -30,10 +31,7 @@ pub(crate) fn include(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, St
                 None => return Err("Can't determine script directory".to_owned()),
             },
             None => match env::current_dir() {
-                Ok(s) => match s.as_path().to_owned().parent() {
-                    Some(p) => p.to_owned(),
-                    None => return Err("Can't determine script directory".to_owned()),
-                },
+                Ok(s) => s.as_path().to_owned(),
                 Err(_) => return Err("Can't determine script directory".to_owned()),
             },
         };
@@ -42,11 +40,17 @@ pub(crate) fn include(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, St
         rel_dir
     };
 
-    let code = compiler::compile_file(full_import_path.as_path()).unwrap_or_else(|e| {
-        eprintln!("{}", e);
-        std::process::exit(1);
-    });
-
-    vm.add_filename(full_import_path);
-    vm.run(&code)
+    match compiler::compile_file(full_import_path.as_path()) {
+        Ok(code) => {
+            vm.add_filename(full_import_path);
+            vm.run(&code)
+        }
+        Err(e) => match e {
+            ParserError::FileNotFound(_) => Err(format!(
+                "Error including file: File not found {}",
+                full_import_path.to_string_lossy()
+            )),
+            _ => Err(format!("Error including file: {}", e)),
+        },
+    }
 }

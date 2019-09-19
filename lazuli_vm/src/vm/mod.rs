@@ -96,7 +96,7 @@ impl VM {
         };
 
         make_builtin!(vm, "include", import::include);
-        make_builtin!(vm, "define", builtin_defvar);
+        make_builtin!(vm, "define", builtin_define);
         make_builtin!(vm, "define-syntax", builtin_defmacro);
         make_builtin!(vm, "setq", builtin_setq);
         make_builtin!(vm, "setf", builtin_setf);
@@ -142,10 +142,10 @@ impl VM {
         vm
     }
 
-    pub fn with_env(env: env::EnvRef) -> Self {
+    pub fn with_env(&self, env: env::EnvRef) -> Self {
         VM {
             symbols: env,
-            cmd_not_found: None,
+            cmd_not_found: self.cmd_not_found.clone(),
             filenames: Vec::new(),
         }
     }
@@ -218,7 +218,7 @@ impl VM {
                     new_env.set_symbol(sym.into_ref());
                 }
 
-                VM::with_env(new_env.into_ref()).eval(&f.body)
+                self.with_env(new_env.into_ref()).eval(&f.body)
             }
             Callable::Macro(f) => {
                 let args = args_setup!(args, "<func>", f.params.len());
@@ -230,13 +230,13 @@ impl VM {
                     new_env.set_symbol(sym.into_ref());
                 }
 
-                let expanded = VM::with_env(new_env.into_ref()).eval(&f.body)?;
+                let expanded = self.with_env(new_env.into_ref()).eval(&f.body)?;
                 self.eval(&expanded)
             }
         }
     }
 
-    fn eval_list(&mut self, form: &ConsList<Node>) -> Result<Node, String> {
+    pub fn eval_list(&mut self, form: &ConsList<Node>) -> Result<Node, String> {
         let h = form.head();
         if h.is_none() {
             return Ok(Node::bool_obj(false));
@@ -263,6 +263,8 @@ impl VM {
                 let sym = sym_table_ref.borrow();
                 if let Some(func) = &sym.function {
                     self.eval_function(&func, form.tail())
+                } else if let Some(c) = self.cmd_not_found.clone() {
+                    self.eval_function(&c, form.clone())
                 } else {
                     Err(format!("Undefined function {}", sym.name()))
                 }
@@ -276,15 +278,15 @@ impl VM {
     }
 }
 
-fn builtin_defvar(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
+fn builtin_define(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
     // Collect into a vector to make it easier to work with args
-    let args = args_setup!(args_list, "defavar", 2);
+    let args = args_setup!(args_list, "define", 2);
 
     let arg1 = args[0]; // Possibly a symbol reference
 
     let arg1_sym = match &arg1 {
         Node::Symbol(sym) => vm.symbols.borrow().get_symbol(sym.borrow().name()),
-        _ => return Err("defvar expected a symbol as arg 1".to_owned()),
+        _ => return Err("define expected a symbol as arg 1".to_owned()),
     }; // Definitly a symbol reference
 
     let val = vm.eval(&args[1])?; // Evalute new value for symbol
@@ -630,7 +632,7 @@ fn builtin_expand_macro(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, 
                     new_env.set_symbol(sym.into_ref());
                 }
 
-                VM::with_env(new_env.into_ref()).eval(&m.body)
+                vm.with_env(new_env.into_ref()).eval(&m.body)
             } else {
                 Err(format!("Undefined macro {}", sym.name()))
             }
