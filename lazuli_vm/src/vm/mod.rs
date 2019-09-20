@@ -12,6 +12,7 @@ use crate::vm::builtins::import;
 use crate::vm::builtins::lists;
 use crate::vm::builtins::logic;
 use crate::vm::builtins::quote;
+use crate::vm::builtins::strings;
 
 #[derive(Default)]
 pub struct VM {
@@ -138,6 +139,8 @@ impl VM {
         make_builtin!(vm, "has-key", builtin_has_key);
 
         make_builtin!(vm, "expand-macro", builtin_expand_macro);
+
+        make_builtin!(vm, "string-concat", strings::string_concat);
 
         vm
     }

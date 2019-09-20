@@ -86,3 +86,7 @@ used.
 - `(set-key COLLECTION KEY VALUE)`
 - `(get-key COLLECTION KEY)`
 - `(has-key COLLECTION KEY)`
+
+## String Manipulation
+
+- `(string-concat VAL...)`
