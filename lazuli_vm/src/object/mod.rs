@@ -65,11 +65,7 @@ impl Node {
     }
 
     pub fn new_keyword(name: &str) -> Self {
-        match name {
-            "t" => TRUE_KW.with(|t| t.clone()),
-            "f" => FALSE_KW.with(|f| f.clone()),
-            _ => Node::Keyword(str_to_symbol_name(name)),
-        }
+        Node::Keyword(str_to_symbol_name(name))
     }
 
     pub fn from_hashmap(m: HashMap<String, Node>) -> Self {
