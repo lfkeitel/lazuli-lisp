@@ -14,6 +14,7 @@ pub enum TokenType {
     Quote,
     Unquote,
     At,
+    Mark,
 }
 
 impl ::std::fmt::Display for TokenType {
@@ -36,6 +37,7 @@ impl ::std::fmt::Display for TokenType {
                 TokenType::Quote => "Quote",
                 TokenType::Unquote => "Unquote",
                 TokenType::At => "At",
+                TokenType::Mark => "Mark",
             }
         )
     }

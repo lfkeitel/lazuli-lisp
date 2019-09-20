@@ -222,6 +222,16 @@ impl<'a> Parser<'a> {
                 }
             }
 
+            TokenType::Mark => {
+                self.read_token();
+                let elem = self.parse_item()?;
+                object::Node::List(
+                    object::cons_list::ConsList::new()
+                        .append(elem)
+                        .append(object::Symbol::new("stop-unquote").into_node()),
+                )
+            }
+
             TokenType::Unquote => {
                 self.read_token();
                 let unquote_func = if self.cur_token_is(TokenType::At) {

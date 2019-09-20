@@ -190,6 +190,7 @@ impl<'a> Iterator for Lexer<'a> {
             b'\'' => some_token!(TokenType::Quote),
             b'%' => some_token!(TokenType::Unquote),
             b'@' => some_token!(TokenType::At),
+            b'!' => some_token!(TokenType::Mark),
             b'"' => {
                 let col = self.col;
                 return some_token!(TokenType::String, self.read_string(), col);
