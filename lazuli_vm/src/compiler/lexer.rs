@@ -90,13 +90,31 @@ impl<'a> Lexer<'a> {
         // TODO: should probably support escape sequences
 
         self.read_char(); // Go over opening quote
-        let mut ident = String::new();
+        let mut ident = Vec::new();
         while self.cur_ch != b'"' {
-            ident.write_char(char::from(self.cur_ch)).unwrap();
+            let mut c = self.cur_ch;
+
+            if c == b'\\' {
+                self.read_char();
+                c = match self.cur_ch {
+                    b'\\' => b'\\',  // back slash
+                    b'0' => b'\0',   // null
+                    b'b' => b'\x08', // backspace
+                    b'e' => b'\x1b', // escape
+                    b'n' => b'\n',   // newline
+                    b't' => b'\t',   // horizontal tab
+                    b'v' => b'\x0b', // vertical tab
+                    b'r' => b'\r',   // carriage return
+                    b'"' => b'"',    // double quote
+                    _ => c,
+                }
+            }
+
+            ident.push(c);
             self.read_char();
         }
         self.read_char(); // Skip closing double quote
-        ident
+        String::from_utf8(ident).unwrap_or_default()
     }
 
     fn read_single_line_comment(&mut self) -> String {
