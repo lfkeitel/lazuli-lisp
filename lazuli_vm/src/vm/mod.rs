@@ -141,6 +141,7 @@ impl VM {
         make_builtin!(vm, "expand-macro", builtin_expand_macro);
 
         make_builtin!(vm, "string-concat", strings::string_concat);
+        make_builtin!(vm, "current-file", builtin_current_file);
 
         vm
     }
@@ -683,4 +684,14 @@ fn builtin_parse_float(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, S
             input.type_str()
         )),
     }
+}
+
+fn builtin_current_file(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
+    args_setup!(args_list, "current-file", ==, 0);
+    let path = match vm.current_filename() {
+        Some(p) => p.to_str().unwrap_or_default(),
+        None => "",
+    };
+
+    Ok(Node::from_string(path.to_owned()))
 }
