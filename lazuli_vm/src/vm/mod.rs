@@ -213,8 +213,26 @@ impl VM {
         match func {
             Callable::Builtin(f) => f(self, args),
             Callable::Func(f) => {
-                let args = args_setup!(args, "<func>", f.params.len());
                 let mut new_env = env::Env::with_parent(self.symbols.clone());
+
+                let args = match f.params.last() {
+                    Some(s) => {
+                        if s == "&rest" {
+                            let mut args = args_setup!(args, "<func1>", >=, f.params.len()-1);
+                            let rest = args.split_off(f.params.len() - 1);
+                            let rest_list = Node::from_vec_ref(rest);
+
+                            let mut sym = Symbol::new("rest");
+                            sym.value = Some(rest_list);
+                            new_env.set_symbol(sym.into_ref());
+
+                            args
+                        } else {
+                            args_setup!(args, "<func2>", f.params.len())
+                        }
+                    }
+                    None => args_setup!(args, "<func>", f.params.len()),
+                };
 
                 for (i, arg) in args.iter().enumerate() {
                     let mut sym = Symbol::new(&f.params[i]);
@@ -225,8 +243,26 @@ impl VM {
                 self.with_env(new_env.into_ref()).eval(&f.body)
             }
             Callable::Macro(f) => {
-                let args = args_setup!(args, "<func>", f.params.len());
                 let mut new_env = env::Env::with_parent(self.symbols.clone());
+
+                let args = match f.params.last() {
+                    Some(s) => {
+                        if s == "&rest" {
+                            let mut args = args_setup!(args, "<func1>", >=, f.params.len()-1);
+                            let rest = args.split_off(f.params.len() - 1);
+                            let rest_list = Node::from_vec_ref(rest);
+
+                            let mut sym = Symbol::new("rest");
+                            sym.value = Some(rest_list);
+                            new_env.set_symbol(sym.into_ref());
+
+                            args
+                        } else {
+                            args_setup!(args, "<func2>", f.params.len())
+                        }
+                    }
+                    None => args_setup!(args, "<func>", f.params.len()),
+                };
 
                 for (i, arg) in args.iter().enumerate() {
                     let mut sym = Symbol::new(&f.params[i]);
@@ -627,8 +663,26 @@ fn builtin_expand_macro(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, 
         if let Some(func) = &sym.function {
             if let Callable::Macro(m) = func {
                 let macro_args = list_arg.tail();
-                let args = args_setup!(macro_args, "<func>", m.params.len());
                 let mut new_env = env::Env::with_parent(vm.symbols.clone());
+
+                let args = match m.params.last() {
+                    Some(s) => {
+                        if s == "&rest" {
+                            let mut args = args_setup!(macro_args, "<func1>", >=, m.params.len()-1);
+                            let rest = args.split_off(m.params.len() - 1);
+                            let rest_list = Node::from_vec_ref(rest);
+
+                            let mut sym = Symbol::new("rest");
+                            sym.value = Some(rest_list);
+                            new_env.set_symbol(sym.into_ref());
+
+                            args
+                        } else {
+                            args_setup!(macro_args, "<func2>", m.params.len())
+                        }
+                    }
+                    None => args_setup!(macro_args, "<func>", m.params.len()),
+                };
 
                 for (i, arg) in args.iter().enumerate() {
                     let mut sym = Symbol::new(&m.params[i]);
