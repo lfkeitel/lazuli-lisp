@@ -43,7 +43,9 @@ pub(crate) fn include(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, St
     match compiler::compile_file(full_import_path.as_path()) {
         Ok(code) => {
             vm.add_filename(full_import_path);
-            vm.run(&code)
+            let res = vm.run(&code);
+            vm.pop_filename();
+            res
         }
         Err(e) => match e {
             ParserError::FileNotFound(_) => Err(format!(
