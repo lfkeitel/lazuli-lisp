@@ -1,7 +1,7 @@
+use crate::args_setup;
 use crate::object::cons_list::ConsList;
 use crate::object::Node;
 use crate::vm::VM;
-use crate::args_setup;
 
 pub(crate) fn logic_gt(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
     let args = args_setup!(args_list, ">", ==, 2);
@@ -31,9 +31,9 @@ pub(crate) fn logic_eq(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, S
     Ok(Node::bool_obj(res))
 }
 
-pub(crate) fn logic_not(_: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
+pub(crate) fn logic_not(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
     let args = args_setup!(args_list, "not", ==, 1);
-    Ok(Node::bool_obj(!args[0].is_truthy()))
+    Ok(Node::bool_obj(!vm.eval(args[0])?.is_truthy()))
 }
 
 pub(crate) fn logic_and(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
