@@ -48,8 +48,28 @@ impl Node {
         Node::List(ConsList::new())
     }
 
+    pub fn from_vec(v: Vec<Node>) -> Node {
+        let mut c = ConsList::new();
+        for i in v.iter().rev().cloned() {
+            c = c.append(i);
+        }
+        Node::List(c)
+    }
+
+    pub fn from_vec_ref(v: Vec<&Node>) -> Node {
+        let mut c = ConsList::new();
+        for i in v.iter().rev() {
+            c = c.append((**i).clone());
+        }
+        Node::List(c)
+    }
+
     pub fn new_keyword(name: &str) -> Self {
-        Node::Keyword(str_to_symbol_name(name))
+        match name {
+            "t" => TRUE_KW.with(|t| t.clone()),
+            "f" => FALSE_KW.with(|f| f.clone()),
+            _ => Node::Keyword(str_to_symbol_name(name)),
+        }
     }
 
     pub fn from_hashmap(m: HashMap<String, Node>) -> Self {
