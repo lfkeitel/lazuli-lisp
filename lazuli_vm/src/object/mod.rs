@@ -220,6 +220,7 @@ pub fn str_to_symbol_name(s: &str) -> String {
     //s.to_uppercase().to_owned()
 }
 
+#[derive(Clone)]
 pub struct Symbol {
     name: String,
     pub value: Option<Node>, // Used when this symbol is evaulated outside a callable context

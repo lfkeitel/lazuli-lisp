@@ -284,8 +284,12 @@ impl VM {
 
         let head = h.unwrap();
         if let Node::Symbol(sym_ref) = &head {
-            let sym_table_ref = self.symbols.borrow().get_symbol(sym_ref.borrow().name());
-            let sym = sym_table_ref.borrow();
+            let sym = {
+                let sym_table_ref = self.symbols.borrow().get_symbol(sym_ref.borrow().name());
+                let b = sym_table_ref.borrow();
+                b.clone()
+            };
+
             return if let Some(func) = &sym.function {
                 self.eval_function(&func, form.tail())
             } else if let Some(c) = self.cmd_not_found.clone() {
@@ -299,8 +303,12 @@ impl VM {
 
         match &evaled_head {
             Node::Symbol(sym_ref) => {
-                let sym_table_ref = self.symbols.borrow().get_symbol(sym_ref.borrow().name());
-                let sym = sym_table_ref.borrow();
+                let sym = {
+                    let sym_table_ref = self.symbols.borrow().get_symbol(sym_ref.borrow().name());
+                    let b = sym_table_ref.borrow();
+                    b.clone()
+                };
+
                 if let Some(func) = &sym.function {
                     self.eval_function(&func, form.tail())
                 } else if let Some(c) = self.cmd_not_found.clone() {
