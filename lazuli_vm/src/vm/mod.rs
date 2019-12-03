@@ -120,6 +120,7 @@ impl VM {
 
         make_builtin!(vm, "parse-int", builtin_parse_int);
         make_builtin!(vm, "parse-float", builtin_parse_float);
+        make_builtin!(vm, "to-string", builtin_to_string);
         make_builtin!(
             vm,
             "debug-print-symbol-table",
@@ -777,6 +778,13 @@ fn builtin_parse_float(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, S
             input.type_str()
         )),
     }
+}
+
+fn builtin_to_string(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
+    let args = args_setup!(args_list, "to-string", ==, 1);
+    let input = vm.eval(&args[0])?;
+
+    Ok(Node::String(format!("{}", input)))
 }
 
 fn builtin_current_file(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {

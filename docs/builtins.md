@@ -74,6 +74,7 @@ Square brackets indicate optional arguments.
 
 - `(parse-int VAL)`
 - `(parse-float VAL)`
+- `(to-string VAL)`
 
 ## Maps
 
