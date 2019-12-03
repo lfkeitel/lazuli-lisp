@@ -3,7 +3,6 @@ use crate::object::cons_list::ConsList;
 use crate::object::Node;
 use crate::vm::VM;
 
-
 pub(crate) fn make_list(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
     let args = args_setup!(args_list);
     let mut new_list = ConsList::new();
@@ -50,6 +49,17 @@ pub(crate) fn tail(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, Strin
         Node::List(l) => Ok(Node::List(l.tail())),
         _ => Err(format!(
             "tail expected a list, got a {}",
+            args[0].type_str()
+        )),
+    }
+}
+
+pub(crate) fn count(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
+    let args = args_setup!(args_list, "count", 1);
+    match vm.eval(args[0])? {
+        Node::List(l) => Ok(Node::Number(l.len() as i64)),
+        _ => Err(format!(
+            "count expected a list, got a {}",
             args[0].type_str()
         )),
     }
