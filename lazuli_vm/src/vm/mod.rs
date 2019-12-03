@@ -98,6 +98,7 @@ impl VM {
 
         make_builtin!(vm, "include", import::include);
         make_builtin!(vm, "define", builtin_define);
+        make_builtin!(vm, "defineg", builtin_defineg);
         make_builtin!(vm, "define-syntax", builtin_defmacro);
         make_builtin!(vm, "setq", builtin_setq);
         make_builtin!(vm, "setf", builtin_setf);
@@ -349,6 +350,30 @@ fn builtin_define(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String
 
     // Store updated symbol in table
     vm.symbols.borrow_mut().set_local_symbol(arg1_sym.clone());
+    Ok(args[0].clone()) // Return symbol
+}
+
+fn builtin_defineg(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
+    // Collect into a vector to make it easier to work with args
+    let args = args_setup!(args_list, "define", 2);
+
+    let arg1 = args[0]; // Possibly a symbol reference
+
+    let arg1_sym = match &arg1 {
+        Node::Symbol(sym) => vm.symbols.borrow().get_symbol(sym.borrow().name()),
+        _ => return Err("define expected a symbol as arg 1".to_owned()),
+    }; // Definitly a symbol reference
+
+    let val = vm.eval(&args[1])?; // Evalute new value for symbol
+
+    // Mutate symbol in a block so we can use it later
+    {
+        let mut arg1_sym_mut = arg1_sym.borrow_mut();
+        arg1_sym_mut.value = Some(val);
+    }
+
+    // Store updated symbol in table
+    vm.symbols.borrow_mut().set_global_symbol(arg1_sym.clone());
     Ok(args[0].clone()) // Return symbol
 }
 

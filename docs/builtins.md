@@ -21,6 +21,7 @@ Square brackets indicate optional arguments.
 ## Symbol Manipulation
 
 - `(define SYM VAL)`
+- `(defineg SYM VAL)` - Define symbol in global scope
 - `(define-syntax SYM VAL)`
 - `(setq SYM VAL)`
 - `(setf SYM VAL)`

@@ -52,6 +52,19 @@ impl Env {
         self.syms.insert(sym_name, sym);
     }
 
+    pub fn set_global_symbol(&mut self, sym: object::SymbolRef) {
+        if let Some(p) = &self.parent {
+            p.borrow_mut().set_symbol(sym);
+            return;
+        }
+
+        let sym_name = {
+            let sym_ref = sym.borrow();
+            sym_ref.name().to_owned()
+        };
+        self.syms.insert(sym_name, sym);
+    }
+
     pub fn set_local_symbol(&mut self, sym: object::SymbolRef) {
         let sym_name = {
             let sym_ref = sym.borrow();
