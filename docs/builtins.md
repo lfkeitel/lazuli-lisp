@@ -20,11 +20,14 @@ Square brackets indicate optional arguments.
 
 ## Symbol Manipulation
 
-- `(define SYM VAL)`
-- `(defineg SYM VAL)` - Define symbol in global scope
-- `(define-syntax SYM VAL)`
-- `(setq SYM VAL)`
-- `(setf SYM VAL)`
+- `(define SYM VAL)` - Define symbol in global scope
+- `(definel SYM VAL)` - Define symbol in local scope
+- `(define-syntax SYM VAL)` - Define macro in global scope
+- `(define-syntaxl SYM VAL)` - Define macro in local scope
+- `(setq SYM VAL)` - Set value of symbol in global scope
+- `(setql SYM VAL)` - Set value of symbol in local scope
+- `(setf SYM VAL)` - Set function value of symbol in global scope
+- `(setfl SYM VAL)` - Set function value of symbol in local scope
 
 ## Output
 

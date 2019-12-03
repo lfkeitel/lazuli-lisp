@@ -98,10 +98,13 @@ impl VM {
 
         make_builtin!(vm, "include", import::include);
         make_builtin!(vm, "define", builtin_define);
-        make_builtin!(vm, "defineg", builtin_defineg);
+        make_builtin!(vm, "definel", builtin_definel);
         make_builtin!(vm, "define-syntax", builtin_defmacro);
+        make_builtin!(vm, "define-syntaxl", builtin_defmacrol);
         make_builtin!(vm, "setq", builtin_setq);
+        make_builtin!(vm, "setql", builtin_setql);
         make_builtin!(vm, "setf", builtin_setf);
+        make_builtin!(vm, "setfl", builtin_setfl);
         make_builtin!(vm, "print", builtin_print);
         make_builtin!(vm, "quote", quote::quote);
         make_builtin!(vm, "quasiquote", quote::quasiquote);
@@ -334,15 +337,15 @@ impl VM {
     }
 }
 
-fn builtin_define(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
+fn builtin_definel(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
     // Collect into a vector to make it easier to work with args
-    let args = args_setup!(args_list, "define", 2);
+    let args = args_setup!(args_list, "definel", 2);
 
     let arg1 = args[0]; // Possibly a symbol reference
 
     let arg1_sym = match &arg1 {
         Node::Symbol(sym) => vm.symbols.borrow().get_symbol(sym.borrow().name()),
-        _ => return Err("define expected a symbol as arg 1".to_owned()),
+        _ => return Err("definel expected a symbol as arg 1".to_owned()),
     }; // Definitly a symbol reference
 
     let val = vm.eval(&args[1])?; // Evalute new value for symbol
@@ -358,7 +361,7 @@ fn builtin_define(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String
     Ok(args[0].clone()) // Return symbol
 }
 
-fn builtin_defineg(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
+fn builtin_define(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
     // Collect into a vector to make it easier to work with args
     let args = args_setup!(args_list, "define", 2);
 
@@ -383,6 +386,39 @@ fn builtin_defineg(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, Strin
 }
 
 fn builtin_setq(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
+    let args = args_setup!(args_list, "setq", >=, 2);
+
+    if args.len() % 2 != 0 {
+        return Err("setq expected pairs of arguments, received uneven arguments".to_owned());
+    }
+
+    for i in 0..(args.len() / 2) {
+        let arg1 = args[i * 2];
+
+        let arg1_sym = match &arg1 {
+            Node::Symbol(sym) => sym,
+            _ => {
+                return Err(format!(
+                    "setq expected a symbol as first in pair, got {}",
+                    arg1.type_str()
+                ));
+            }
+        };
+
+        let val = vm.eval(&args[(i * 2) + 1])?;
+
+        {
+            let mut arg1_sym_mut = arg1_sym.borrow_mut();
+            arg1_sym_mut.value = Some(val);
+        }
+
+        vm.symbols.borrow_mut().set_global_symbol(arg1_sym.clone());
+    }
+
+    Ok(Node::Empty)
+}
+
+fn builtin_setql(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
     let args = args_setup!(args_list, "setq", >=, 2);
 
     if args.len() % 2 != 0 {
@@ -435,8 +471,77 @@ fn builtin_setf(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> 
         arg1_sym_mut.function = Some(f);
     }
 
+    vm.symbols.borrow_mut().set_global_symbol(arg1_sym.clone());
+    Ok(Node::Empty)
+}
+
+fn builtin_setfl(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
+    let args = args_setup!(args_list, "setf", 2);
+
+    let arg1 = vm.eval(&args[0])?;
+
+    let arg1_sym = match &arg1 {
+        Node::Symbol(sym) => vm.symbols.borrow().get_symbol(sym.borrow().name()),
+        _ => {
+            return Err(format!(
+                "setf expected a symbol as first argument, got {}",
+                arg1.type_str()
+            ));
+        }
+    };
+
+    if let Node::Function(f) = vm.eval(&args[1])? {
+        let mut arg1_sym_mut = arg1_sym.borrow_mut();
+        arg1_sym_mut.function = Some(f);
+    }
+
     vm.symbols.borrow_mut().set_local_symbol(arg1_sym.clone());
     Ok(Node::Empty)
+}
+
+fn builtin_defmacrol(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
+    let args = args_setup!(args_list, "defmacrol", 3);
+
+    let macro_name = args[0]; // Possibly a symbol reference
+
+    let macro_sym = match &macro_name {
+        Node::Symbol(sym) => vm.symbols.borrow().get_symbol(sym.borrow().name()),
+        _ => return Err("defmacrol expected a symbol as arg 1".to_owned()),
+    }; // Definitly a symbol reference
+
+    let params = match &args[1] {
+        Node::List(l) => l,
+        _ => {
+            return Err(format!(
+                "defmacrol expected second argument to be a list, got {}",
+                args[0].type_str()
+            ));
+        }
+    };
+
+    let mut param_names = Vec::new();
+    for param in params.iter() {
+        match param {
+            Node::Symbol(s) => param_names.push(s.borrow().name().to_owned()),
+            _ => {
+                return Err(format!(
+                    "defmacrol expected third argument to be a list of symbols, got {}",
+                    param.type_str()
+                ));
+            }
+        }
+    }
+
+    {
+        let mut macro_sym_mut = macro_sym.borrow_mut();
+        macro_sym_mut.function = Some(Callable::Macro(Function {
+            params: param_names,
+            body: Box::new(args[2].clone()),
+        }));
+    }
+
+    vm.symbols.borrow_mut().set_local_symbol(macro_sym.clone());
+    Ok(Node::Symbol(macro_sym))
 }
 
 fn builtin_defmacro(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> {
@@ -480,7 +585,7 @@ fn builtin_defmacro(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, Stri
         }));
     }
 
-    vm.symbols.borrow_mut().set_local_symbol(macro_sym.clone());
+    vm.symbols.borrow_mut().set_global_symbol(macro_sym.clone());
     Ok(Node::Symbol(macro_sym))
 }
 
