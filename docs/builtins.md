@@ -33,7 +33,7 @@ Square brackets indicate optional arguments.
 ## Quoting
 
 - `(quote VAL)` or `'()`
-- `(quasiquote VAL)` or `` `()``
+- `(quasiquote VAL)` or `` `() ``
 - `(unquote VAL)` or `%val`
 - `(unquote-splice LIST)` or `%@val`
 
@@ -45,7 +45,7 @@ Square brackets indicate optional arguments.
 - `(loop BODY)`
 - `(while COND BODY)`
 - `(include FILE)` - The file is included as if it was inline. All symbols are
-    accessable to the included script
+  accessable to the included script
 
 ## List Manipulation
 
@@ -90,3 +90,8 @@ used.
 ## String Manipulation
 
 - `(string-concat VAL...)`
+- `(string-replace STR OLD NEW [COUNT])` - Replace COUNT instances of OLD with NEW
+  in string STR. If COUNT is not given, string-replace will replace all instances
+  of OLD
+- `(string-split STR PATTERN [COUNT])` - Split STR into COUNT parts separated by
+  PATTERN. If COUNT is not given, all possible splits will be made.

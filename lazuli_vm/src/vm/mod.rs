@@ -141,6 +141,8 @@ impl VM {
         make_builtin!(vm, "expand-macro", builtin_expand_macro);
 
         make_builtin!(vm, "string-concat", strings::string_concat);
+        make_builtin!(vm, "string-replace", strings::string_replace);
+        make_builtin!(vm, "string-split", strings::string_split);
         make_builtin!(vm, "current-file", builtin_current_file);
 
         vm
