@@ -226,7 +226,7 @@ impl VM {
 
                             let mut sym = Symbol::new("rest");
                             sym.value = Some(rest_list);
-                            new_env.set_symbol(sym.into_ref());
+                            new_env.set_local_symbol(sym.into_ref());
 
                             args
                         } else {
@@ -239,7 +239,7 @@ impl VM {
                 for (i, arg) in args.iter().enumerate() {
                     let mut sym = Symbol::new(&f.params[i]);
                     sym.value = Some(self.eval(arg)?);
-                    new_env.set_symbol(sym.into_ref());
+                    new_env.set_local_symbol(sym.into_ref());
                 }
 
                 self.with_env(new_env.into_ref()).eval(&f.body)
@@ -348,7 +348,7 @@ fn builtin_define(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String
     }
 
     // Store updated symbol in table
-    vm.symbols.borrow_mut().set_symbol(arg1_sym.clone());
+    vm.symbols.borrow_mut().set_local_symbol(arg1_sym.clone());
     Ok(args[0].clone()) // Return symbol
 }
 
@@ -379,7 +379,7 @@ fn builtin_setq(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> 
             arg1_sym_mut.value = Some(val);
         }
 
-        vm.symbols.borrow_mut().set_symbol(arg1_sym.clone());
+        vm.symbols.borrow_mut().set_local_symbol(arg1_sym.clone());
     }
 
     Ok(Node::Empty)
@@ -405,7 +405,7 @@ fn builtin_setf(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, String> 
         arg1_sym_mut.function = Some(f);
     }
 
-    vm.symbols.borrow_mut().set_symbol(arg1_sym.clone());
+    vm.symbols.borrow_mut().set_local_symbol(arg1_sym.clone());
     Ok(Node::Empty)
 }
 
@@ -450,7 +450,7 @@ fn builtin_defmacro(vm: &mut VM, args_list: ConsList<Node>) -> Result<Node, Stri
         }));
     }
 
-    vm.symbols.borrow_mut().set_symbol(macro_sym.clone());
+    vm.symbols.borrow_mut().set_local_symbol(macro_sym.clone());
     Ok(Node::Symbol(macro_sym))
 }
 

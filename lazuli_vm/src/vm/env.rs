@@ -32,11 +32,27 @@ impl Env {
     }
 
     pub fn set_symbol(&mut self, sym: object::SymbolRef) {
+        let sym_name = {
+            let sym_ref = sym.borrow();
+            sym_ref.name().to_owned()
+        };
+        // If the symbol is currently defined, update its value
+        if self.contains(&sym_name) {
+            self.syms.insert(sym_name, sym);
+            return;
+        }
+
+        // Otherwise, set it in the parent if one exists
         if let Some(p) = &self.parent {
             p.borrow_mut().set_symbol(sym);
             return;
         }
 
+        // If global scope, set it anyway
+        self.syms.insert(sym_name, sym);
+    }
+
+    pub fn set_local_symbol(&mut self, sym: object::SymbolRef) {
         let sym_name = {
             let sym_ref = sym.borrow();
             sym_ref.name().to_owned()
